@@ -9,8 +9,8 @@
 - Anett Yomali Vera Carbajal
 
 ## Descripción del Sistema
-El proyecto DORECO (Donación y Reciclaje en la Comunidad Universitaria) es un sistema orientado a fomentar la cultura del reciclaje, consumo responsable, reutilización y apoyo colaborativo dentro de la comunidad universitaria.  \ 
-Esta es la parte frontend del proyecto, desarrollada utilizando React.js, encargada de brindar una interfaz gráfica intuitiva para que los estudiantes puedan:  \ 
+El proyecto DORECO (Donación y Reciclaje en la Comunidad Universitaria) es un sistema orientado a fomentar la cultura del reciclaje, consumo responsable, reutilización y apoyo colaborativo dentro de la comunidad universitaria.  
+Esta es la parte frontend del proyecto, desarrollada utilizando React.js, encargada de brindar una interfaz gráfica intuitiva para que los estudiantes puedan:  
 - Publicar objetos con fotografías, descripciones, estado y categoría.
 - Buscar, filtrar y solicitar objetos publicados por otros usuarios.
 - Acceder fácilmente a la información de cada artículo mediante códigos QR.
