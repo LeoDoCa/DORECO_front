@@ -55,8 +55,8 @@ DORECO_front/
 ```
 
 ## Requisitos Previos
-- Node.js >= 16.x
-- npm >= 9.x
+- Node.js >= 18.x
+- npm >= 10.x
 
 ## Cómo Clonar, Instalar y Correr el Proyecto
 ```bash
