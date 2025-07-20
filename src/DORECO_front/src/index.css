@@ -1,0 +1,76 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@layer base {
+
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[#28344F] hover:bg-[#28344F]/90 text-white font-medium py-2.5 px-4 rounded-xl transition-all duration-200 shadow-soft hover:shadow-medium focus:outline-none focus:ring-2 focus:ring-[#394867] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl border border-gray-300 transition-all duration-200 shadow-soft hover:shadow-medium focus:outline-none focus:ring-2 focus:ring-[#28344F] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#28344F] focus:border-transparent transition-all duration-200 bg-white placeholder-gray-400;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-soft border border-gray-100 p-6;
+  }
+
+  .form-error {
+    @apply text-red-500 text-sm mt-1 font-medium;
+  }
+}
+
+/* SweetAlert2 Custom Styles */
+.swal2-popup {
+  border-radius: 1.5rem !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.swal2-title {
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.swal2-content {
+  color: #6b7280 !important;
+}
+
+.swal2-confirm {
+  background-color: #28344F !important;
+  border-radius: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.75rem 1.5rem !important;
+  margin-left: 3px !important;
+  margin-right: 3px !important;
+}
+
+.swal2-cancel {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border-radius: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.75rem 1.5rem !important;
+  margin-left: 3px !important;
+  margin-right: 3px !important;
+}
+
+/* Loading Skeleton Custom Styles */
+.react-loading-skeleton {
+  border-radius: 0.75rem !important;
+}

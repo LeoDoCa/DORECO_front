@@ -1,0 +1,108 @@
+"use client"
+
+import { useState, useCallback } from "react"
+import axiosClient from "@config/http-client/axios-client"
+import { useConfirmAction } from "./useConfirmAction"
+
+export const useApi = () => {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const { showSuccess, showError } = useConfirmAction()
+
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  const apiCall = useCallback(
+    async (
+      apiFunction,
+      {
+        showSuccessMessage = true,
+        successMessage = "Operación completada exitosamente",
+        showErrorMessage = true,
+        onSuccess,
+        onError,
+      } = {},
+    ) => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const response = await apiFunction()
+
+        if (showSuccessMessage) {
+          showSuccess(successMessage)
+        }
+
+        if (onSuccess) {
+          onSuccess(response.data)
+        }
+
+        return { success: true, data: response.data }
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || "Ha ocurrido un error inesperado"
+        setError(errorMessage)
+
+        if (showErrorMessage) {
+          showError(errorMessage)
+        }
+
+        if (onError) {
+          onError(err)
+        }
+
+        return { success: false, error: errorMessage }
+      } finally {
+        setLoading(false)
+      }
+    },
+    [showSuccess, showError],
+  )
+
+  const get = useCallback(
+    (url, config = {}) => {
+      return apiCall(() => axiosClient.get(url, config))
+    },
+    [apiCall],
+  )
+
+  const post = useCallback(
+    (url, data = {}, config = {}) => {
+      return apiCall(() => axiosClient.post(url, data, config))
+    },
+    [apiCall],
+  )
+
+  const put = useCallback(
+    (url, data = {}, config = {}) => {
+      return apiCall(() => axiosClient.put(url, data, config))
+    },
+    [apiCall],
+  )
+
+  const patch = useCallback(
+    (url, data = {}, config = {}) => {
+      return apiCall(() => axiosClient.patch(url, data, config))
+    },
+    [apiCall],
+  )
+
+  const del = useCallback(
+    (url, config = {}) => {
+      return apiCall(() => axiosClient.delete(url, config))
+    },
+    [apiCall],
+  )
+
+  return {
+    loading,
+    error,
+    clearError,
+    apiCall,
+    get,
+    post,
+    put,
+    patch,
+    delete: del,
+  }
+}
