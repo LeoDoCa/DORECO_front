@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useCallback } from "react"
 import axiosClient from "@config/http-client/axios-client"
 import { useConfirmAction } from "./useConfirmAction"
@@ -66,6 +64,16 @@ export const useApi = () => {
     [apiCall],
   )
 
+  const getSilence = useCallback(
+    (url, apiOptions = {}) => {
+      return apiCall(() => axiosClient.get(url), {
+        showSuccessMessage: false,
+        showErrorMessage: false,
+        ...apiOptions,
+      });
+    },
+    [apiCall],
+  );
   const post = useCallback(
     (url, data = {}, config = {}) => {
       return apiCall(() => axiosClient.post(url, data, config))
@@ -100,6 +108,7 @@ export const useApi = () => {
     clearError,
     apiCall,
     get,
+    getSilence,
     post,
     put,
     patch,

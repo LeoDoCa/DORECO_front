@@ -3,8 +3,8 @@ import Cookies from "js-cookie"
 export const AuthManager = {
   setAuthData: (token, userData) => {
     Cookies.set("auth_token", token, {
-      expires: 7, // 7 días
-      secure: import.meta.env.PROD, 
+      expires: 7,
+      secure: import.meta.env.PROD,
       sameSite: "strict",
     })
 

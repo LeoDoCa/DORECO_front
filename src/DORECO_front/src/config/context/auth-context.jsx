@@ -1,9 +1,8 @@
-"use client"
-
 import { createContext, useContext, useReducer, useEffect } from "react"
 import { AuthManager } from "./auth-manager"
 import axiosClient from "@config/http-client/axios-client"
 import Swal from "sweetalert2"
+import { ref } from "yup"
 
 const authReducer = (state, action) => {
   switch (action.type) {
@@ -15,7 +14,8 @@ const authReducer = (state, action) => {
         ...state,
         isAuthenticated: true,
         user: action.payload.user,
-        token: action.payload.token,
+        token: action.payload.access,
+        refreshToken: action.payload.refresh,
         loading: false,
         error: null,
       }
@@ -90,124 +90,27 @@ export const AuthProvider = ({ children }) => {
     initializeAuth()
   }, [])
 
-    const login = async (credentials) => {
-    try {
-      dispatch({ type: "SET_LOADING", payload: true })
-      dispatch({ type: "CLEAR_ERROR" })
-
-      // Simular usuarios del sistema
-      const mockUsers = [
-        {
-          id: 1,
-          email: "admin@doreco.com",
-          password: "admin123",
-          name: "María González",
-          role: "admin",
-          phone: "+52 55 1234 5678",
-          location: "Ciudad de México, CDMX",
-          bio: "Administradora del sistema DORECO",
-          avatar: "/placeholder.svg?height=100&width=100",
-          joinedAt: "2023-01-15",
-          stats: {
-            objectsPublished: 25,
-            reservationsMade: 12,
-            totalViews: 1247,
-          },
-        },
-        {
-          id: 2,
-          email: "estudiante@doreco.com",
-          password: "estudiante123",
-          name: "Carlos Rodríguez",
-          role: "user",
-          phone: "+52 55 9876 5432",
-          location: "Guadalajara, JAL",
-          bio: "Estudiante de Ingeniería en Sistemas, me gusta reutilizar objetos y ayudar al medio ambiente",
-          avatar: "/placeholder.svg?height=100&width=100",
-          joinedAt: "2023-03-20",
-          stats: {
-            objectsPublished: 8,
-            reservationsMade: 15,
-            totalViews: 342,
-          },
-          interests: [1, 3, 7, 9], // IDs de objetos de interés
-        },
-      ]
-
-      // Buscar usuario
-      const user = mockUsers.find((u) => u.email === credentials.email && u.password === credentials.password)
-
-      if (!user) {
-        throw new Error("Credenciales inválidas")
-      }
-
-      const token = `mock_token_${user.id}_${Date.now()}`
-
-      // Guardar datos de autenticación
-      AuthManager.setAuthData(token, user)
-
-      dispatch({
-        type: "LOGIN_SUCCESS",
-        payload: { user, token },
-      })
-
-      // Mostrar alerta de éxito
-      Swal.fire({
-        icon: "success",
-        title: "¡Bienvenido!",
-        text: `Hola ${user.name}, has iniciado sesión como ${user.role === "admin" ? "Administrador" : "Estudiante"}.`,
-        timer: 2000,
-        showConfirmButton: false,
-        customClass: {
-          popup: "rounded-2xl",
-        },
-      })
-
-      return { success: true, user, token }
-    } catch (error) {
-      const errorMessage = error.message || "Error al iniciar sesión"
-
-      dispatch({
-        type: "SET_ERROR",
-        payload: errorMessage,
-      })
-
-      Swal.fire({
-        icon: "error",
-        title: "Error de Autenticación",
-        text: errorMessage,
-        confirmButtonText: "Intentar de nuevo",
-        customClass: {
-          popup: "rounded-2xl",
-          confirmButton: "btn-primary",
-        },
-      })
-
-      return { success: false, error: errorMessage }
-    }
-  }
-
-/*
-Este es el login que se usara una vez que se conecte el back y front el de arriba es solo de prueba
   const login = async (credentials) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true })
       dispatch({ type: "CLEAR_ERROR" })
 
-      const response = await axiosClient.post("/auth/login", credentials)
-      const { token, user } = response.data
+      const response = await axiosClient.post("/auth/login/", credentials)
+      const { access, refresh, user } = response.data
 
-      AuthManager.setAuthData(token, user)
+      AuthManager.setAuthData(access, user)
+      localStorage.setItem("refresh_token", refresh)
+      localStorage.setItem("auth_token", access)
 
       dispatch({
         type: "LOGIN_SUCCESS",
-        payload: { user, token },
+        payload: { user, token: access },
       })
 
       Swal.fire({
         icon: "success",
         title: "¡Bienvenido!",
-        text: `Hola ${user.name || user.email}, has iniciado sesión correctamente.`,
+        text: `Hola ${user.name}, has iniciado sesión como ${user.role_name === "ADMIN" ? "Administrador" : "Usuario"}.`,
         timer: 2000,
         showConfirmButton: false,
         customClass: {
@@ -215,9 +118,9 @@ Este es el login que se usara una vez que se conecte el back y front el de arrib
         },
       })
 
-      return { success: true, user, token }
+      return { success: true, user, token: access }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "Error al iniciar sesión"
+      const errorMessage = error.response?.data?.message || error.message || "Error al iniciar sesión"
 
       dispatch({
         type: "SET_ERROR",
@@ -238,42 +141,75 @@ Este es el login que se usara una vez que se conecte el back y front el de arrib
       return { success: false, error: errorMessage }
     }
   }
-*/
+
   const register = async (userData) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true })
       dispatch({ type: "CLEAR_ERROR" })
 
-      const response = await axiosClient.post("/auth/register", userData)
+      const payload = {
+        name: userData.name,
+        surnames: userData.surnames,
+        email: userData.email,
+        username: userData.username,
+        password: userData.password,
+        password_confirm: userData.password_confirm,
+        phone_number: userData.phone_number,
+      }
+      const response = await axiosClient.post("/auth/register/", payload)
+      // Si la respuesta es 201 y contiene los datos del usuario, mostrar éxito
+      if (response.status === 201 && response.data && response.data.id) {
+        Swal.fire({
+          icon: "success",
+          title: "¡Registro Exitoso!",
+          text: `Bienvenido ${response.data.name}, tu cuenta ha sido creada correctamente.`,
+          timer: 2000,
+          showConfirmButton: false,
+          customClass: {
+            popup: "rounded-2xl",
+          },
+        })
+        dispatch({ type: "SET_LOADING", payload: false })
+        return { success: true, user: response.data }
+      }
+      // Si la respuesta contiene token y user (caso anterior)
       const { token, user } = response.data
-
-      AuthManager.setAuthData(token, user)
-
-      dispatch({
-        type: "LOGIN_SUCCESS",
-        payload: { user, token },
-      })
-
-      Swal.fire({
-        icon: "success",
-        title: "¡Registro Exitoso!",
-        text: `Bienvenido ${user.name}, tu cuenta ha sido creada correctamente.`,
-        timer: 2000,
-        showConfirmButton: false,
-        customClass: {
-          popup: "rounded-2xl",
-        },
-      })
-
-      return { success: true, user, token }
+      if (token && user) {
+        AuthManager.setAuthData(token, user)
+        dispatch({
+          type: "LOGIN_SUCCESS",
+          payload: { user, token },
+        })
+        Swal.fire({
+          icon: "success",
+          title: "¡Registro Exitoso!",
+          text: `Bienvenido ${user.name}, tu cuenta ha sido creada correctamente.`,
+          timer: 2000,
+          showConfirmButton: false,
+          customClass: {
+            popup: "rounded-2xl",
+          },
+        })
+        dispatch({ type: "SET_LOADING", payload: false })
+        return { success: true, user, token }
+      }
+      // Si no, error genérico
+      throw new Error("Respuesta inesperada del servidor")
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "Error al registrar usuario"
-
+      // Procesar errores de validación del backend
+      const errorData = error.response?.data
+      let errorMessage = "Error al registrar usuario"
+      if (errorData) {
+        if (typeof errorData === "string") {
+          errorMessage = errorData
+        } else if (typeof errorData === "object") {
+          errorMessage = Object.values(errorData).flat().join(" | ")
+        }
+      }
       dispatch({
         type: "SET_ERROR",
         payload: errorMessage,
       })
-
       Swal.fire({
         icon: "error",
         title: "Error de Registro",
@@ -284,7 +220,6 @@ Este es el login que se usara una vez que se conecte el back y front el de arrib
           confirmButton: "btn-primary",
         },
       })
-
       return { success: false, error: errorMessage }
     }
   }
