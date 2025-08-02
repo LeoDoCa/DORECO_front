@@ -6,7 +6,6 @@ export const useApi = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { showSuccess, showError } = useConfirmAction()
-
   const clearError = useCallback(() => {
     setError(null)
   }, [])
@@ -16,7 +15,7 @@ export const useApi = () => {
       apiFunction,
       {
         showSuccessMessage = true,
-        successMessage = "Operación completada exitosamente",
+        successMessage = "Acción realizada exitosamente",
         showErrorMessage = true,
         onSuccess,
         onError,
@@ -25,7 +24,6 @@ export const useApi = () => {
       try {
         setLoading(true)
         setError(null)
-
         const response = await apiFunction()
 
         if (showSuccessMessage) {
@@ -38,7 +36,7 @@ export const useApi = () => {
 
         return { success: true, data: response.data }
       } catch (err) {
-        const errorMessage = err.response?.data?.message || "Ha ocurrido un error inesperado"
+        const errorMessage = err.response?.data?.message || "Ha ocurrido un error, intentalo más tarde"
         setError(errorMessage)
 
         if (showErrorMessage) {
@@ -94,7 +92,6 @@ export const useApi = () => {
     },
     [apiCall],
   )
-
   const del = useCallback(
     (url, config = {}) => {
       return apiCall(() => axiosClient.delete(url, config))
