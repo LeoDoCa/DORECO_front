@@ -98,7 +98,7 @@ cd .\DORECO_front\
 npm install
 
 # 4. Instalar librerías adicionales necesarias
-npm install axios formik yup react-router-dom animate.css flowbite flowbite-react sweetalert2 sweetalert2-react-content
+npm install axios formik yup react-router-dom animate.css flowbite flowbite-react sweetalert2 sweetalert2-react-content react-loading-skeleton shadcn-ui tailwindcss-animate
 
 # 5. Correr el archivo 
 npm run dev
