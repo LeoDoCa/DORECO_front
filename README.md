@@ -28,15 +28,39 @@ DORECO_front/
 ├── src/
 │   └── DORECO_front/
 │       ├── src/
+│       │   ├── assets/
+│       |   |   ├── icon.png
+│       |   |   └── logo.png
 │       │   ├── auth/
+│       |   |   ├── ForgetPassword.jsx
 │       |   |   ├── Login.jsx
 │       |   |   └── Register.jsx
+│       │   ├── components/layout/
+│       |   |   ├── Header.jsx
+│       |   |   ├── MainLayout.jsx
+│       |   |   └── Sidebar.jsx
 │       │   ├── config/
 │       |   │   ├── context/
 │       |   |   │   ├── auth-context.jsx
 │       |   |   │   └── auth-manager.js
 │       |   │   └── http-client/
 │       |   |       └── axios-client.js
+│       │   ├── hooks/
+│       |   |   ├── useApi.js
+│       |   |   └── useConfirmAction.js
+│       │   ├── pages/
+│       |   │   ├── admin/
+│       |   |   │   ├── Categories.jsx
+│       |   |   │   ├── ReportView.jsx
+│       |   |   │   └── Reports.jsx
+│       |   │   ├── objects/
+│       |   |   │   ├── ObjectDetails.jsx
+│       |   |   │   ├── ObjectsList.jsx
+│       |   |   │   ├── PublicObjectDetails.jsx
+│       |   |   │   └── PublishObject.jsx
+│       |   │   ├── Dashboard.jsx
+│       |   │   ├── MyInterests.jsx
+│       |   │   └── Profile.jsx
 │       │   ├── router/
 │       |   |   └── AppRouter.jsx
 │       │   ├── App.jsx
@@ -44,10 +68,13 @@ DORECO_front/
 │       │   └── main.jsx
 │       ├── .env
 │       ├── .gitignore
+│       ├── .prettierrc
 │       ├── eslint.config.js
 │       ├── index.html
 │       ├── package-lock.json
 │       ├── package.json
+│       ├── postcss.config.js
+│       ├── tailwind.config.js
 │       └── vite.config.js
 ├── tests/
 |   └── test_tests.txt             
