@@ -11,7 +11,7 @@ const ObjectDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { get, post, loading } = useApi();
+  const { get, getSilence, post, loading } = useApi();
   const { confirmAction, showSuccess, showError } = useConfirmAction();
   const [object, setObject] = useState(null);
   const [relatedObjects, setRelatedObjects] = useState([]);
@@ -30,7 +30,7 @@ const ObjectDetails = () => {
   }, [id]);
 
   const loadObjectDetails = async () => {
-    const response = await get(`/api/publications/${id}/`);
+    const response = await getSilence(`/api/publications/${id}/`);
     if (response && response.success) {
       let obj = response.data;
       if (obj.publication_data) {
@@ -59,6 +59,7 @@ const ObjectDetails = () => {
 
         },
         keywords: obj.keywords,
+        is_favorite: obj.is_favorite,
       });
       setMainImageIndex(0);
     }
@@ -70,15 +71,21 @@ const ObjectDetails = () => {
     }, 1200);
   };
 
+  // Nueva función usando useInterests
   const handleToggleFavorite = async () => {
     if (!object) return;
-    const response = await post(`/api/publications/${object.id}/toggle_favorite/`);
-    if (response && response.success) {
-      setObject(prev => ({
-        ...prev,
-        is_favorite: response.data.is_favorite
-      }));
+    let updatedFavorite = false;
+    if (object.is_favorite) {
+      const removed = await removeFromInterests(object.id);
+      updatedFavorite = removed;
+    } else {
+      const added = await addToInterests(object.id);
+      updatedFavorite = added;
     }
+    setObject(prev => ({
+      ...prev,
+      is_favorite: updatedFavorite
+    }));
   };
 
   const handleContactOwner = async () => {

@@ -13,16 +13,15 @@ const MainLayout = ({ children }) => {
   const { user } = useAuth()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f9fbfc]">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         currentPath={location.pathname}
-        userRole={user?.role}
+        userRole={user?.role_name}
       />
 
       <div className="lg:pl-64">
-        {/* Header */}
         <Header onMenuClick={() => setSidebarOpen(true)} user={user} />
 
         <main className="py-6">
