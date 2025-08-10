@@ -1,4 +1,3 @@
-"use client"
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
@@ -64,9 +63,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {/* Formulario */}
         <div className="card">
-          {/* Header */}
         <img src={Logo} alt="DORECO Logo" className="mx-auto mb-6 h-20 w-auto" />
 
         <div className="text-center mb-4">
@@ -76,7 +73,6 @@ const Login = () => {
           <Formik initialValues={{ email: "", password: "" }} validationSchema={loginSchema} onSubmit={handleSubmit}>
             {({ isSubmitting, errors, touched }) => (
               <Form className="space-y-6">
-                {/* Email */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     Correo Electrónico
@@ -92,7 +88,6 @@ const Login = () => {
                   <ErrorMessage name="email" component="div" className="form-error" />
                 </div>
 
-                {/* Password */}
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                     Contraseña
@@ -141,7 +136,6 @@ const Login = () => {
                   <ErrorMessage name="password" component="div" className="form-error" />
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -179,7 +173,6 @@ const Login = () => {
             )}
           </Formik>
 
-          {/* Links */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 mb-3">
               <Link to="/forgetpassword" className="font-medium text-gray-600 hover:text-[#394867] transition-colors">

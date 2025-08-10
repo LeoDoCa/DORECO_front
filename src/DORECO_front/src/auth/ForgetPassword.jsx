@@ -1,9 +1,10 @@
+"use client"
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Formik, Form, Field, ErrorMessage } from "formik"
 import * as Yup from "yup"
-import { useAuth } from "@config/context/auth-context"
+import { useApi } from "@hooks/useApi"
 import Skeleton from "react-loading-skeleton"
 import Logo from "./../assets/logo.png"
 
@@ -13,20 +14,22 @@ const loginSchema = Yup.object().shape({
 
 const ForgetPassword = () => {
   const navigate = useNavigate()
-  const { login, loading } = useAuth()
-  const [showPassword, setShowPassword] = useState(false)
+  const { post, loading } = useApi()
+  const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
+    setMessage("")
+    setError("")
     try {
-      const result = await login(values)
-
+      const result = await post("/auth/password-reset-request/", { email: values.email })
       if (result.success) {
-        navigate("/dashboard", { replace: true })
+        setMessage("Si el correo electrónico existe en nuestro sistema, recibirás un enlace de recuperación.")
       } else {
-        setFieldError("email", " ")
+        setError(result.error || "No se pudo enviar la solicitud. Intenta de nuevo.")
       }
     } catch (error) {
-      console.error("Email error:", error)
+      setError("Error inesperado. Intenta de nuevo.")
     } finally {
       setSubmitting(false)
     }
@@ -54,16 +57,16 @@ const ForgetPassword = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        {/* Formulario */}
         <div className="card">
         <img src={Logo} alt="DORECO Logo" className="mx-auto mb-6 h-20 w-auto" />
         <div className="text-center mb-4">
           <h2 className="text-3xl font-bold text-[#28344F]">Recuperar contraseña</h2>
           <p className="mt-2 text-[#394867]">Accede a tu cuenta de DORECO</p>
         </div>
-          <Formik initialValues={{ email: "", password: "" }} validationSchema={loginSchema} onSubmit={handleSubmit}>
+          <Formik initialValues={{ email: "" }} validationSchema={loginSchema} onSubmit={handleSubmit}>
             {({ isSubmitting, errors, touched }) => (
               <Form className="space-y-6">
-                {/* Email */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     Correo Electrónico
@@ -79,7 +82,9 @@ const ForgetPassword = () => {
                   <ErrorMessage name="email" component="div" className="form-error" />
                 </div>
 
-                {/* Submit Button */}
+                {message && <div className="form-success text-green-600 text-sm text-center">{message}</div>}
+                {error && <div className="form-error text-red-600 text-sm text-center">{error}</div>}
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -107,17 +112,16 @@ const ForgetPassword = () => {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      Iniciando sesión...
+                      Enviando solicitud...
                     </>
                   ) : (
-                    "Envirar solicitud de recuperación"
+                    "Enviar solicitud de recuperación"
                   )}
                 </button>
               </Form>
             )}
           </Formik>
 
-          {/* Links */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 mb-3">
               <Link to="/login" className="font-medium text-gray-600 hover:text-[#394867] transition-colors">

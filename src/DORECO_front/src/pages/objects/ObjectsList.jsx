@@ -86,124 +86,128 @@ const ObjectsList = () => {
     }
   };
 
-  const handleToggleFavorite = async (object) => {
-    const response = await post(`/api/publications/${object.id}/toggle_favorite/`);
-    if (response && response.success) {
-      setObjects(prev =>
-        prev.map(obj =>
-          obj.id === object.id
-            ? { ...obj, is_favorite: response.data.is_favorite }
-            : obj
-        )
-      );
+  // Nueva función para manejar favoritos usando useInterests
+  const handleToggleFavorite = async (object, e) => {
+    e.stopPropagation(); // Evita propagación para que no navegue
+    e.preventDefault(); // Evita navegación del Link
+    let updatedFavorite = false;
+    if (object.is_favorite) {
+      const removed = await removeFromInterests(object.id);
+      updatedFavorite = removed;
+    } else {
+      const added = await addToInterests(object.id);
+      updatedFavorite = added;
     }
+    setObjects(prev =>
+      prev.map(obj =>
+        obj.id === object.id
+          ? { ...obj, is_favorite: updatedFavorite }
+          : obj
+      )
+    );
   };
 
+  // El botón de favorito ahora está fuera del Link principal
   const ObjectCard = ({ object }) => (
-    <Link
-      to={`/objects/${object.id}`}
-      className="card hover:shadow-medium transition-shadow duration-200 cursor-pointer"
-    >
-      <div className="aspect-w-16 aspect-h-9 mb-4">
-        <img
-          src={object.image || "/placeholder.svg"}
-          alt={object.name}
-          className="w-full h-48 object-cover rounded-lg bg-gray-100"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-start justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-            {object.name}
-          </h3>
-          <span
-            className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getPublicationColor(
-              object.publication_type
-            )}`}
-          >
-            {object.publication_type}
-          </span>
+    <div className="card hover:shadow-medium transition-shadow duration-200 cursor-pointer group relative">
+      <Link
+        to={`/objects/${object.id}`}
+        className="block"
+        tabIndex={-1}
+      >
+        <div className="aspect-w-16 aspect-h-9 mb-4">
+          <img
+            src={object.image || "/placeholder.svg"}
+            alt={object.name}
+            className="w-full h-48 object-cover rounded-lg bg-gray-100"
+          />
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-2">
-          {object.description}
-        </p>
+        <div className="space-y-2">
+          <div className="flex items-start justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+              {object.name}
+            </h3>
+            <span
+              className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getPublicationColor(
+                object.publication_type
+              )}`}
+            >
+              {object.publication_type}
+            </span>
+          </div>
 
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span className="bg-gray-100 px-2 py-1 rounded-md">
-            {object.category}
-          </span>
-          <div className="flex items-center space-x-4">
+          <p className="text-sm text-gray-600 line-clamp-2">
+            {object.description}
+          </p>
+
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <span className="bg-gray-100 px-2 py-1 rounded-md">
+              {object.category}
+            </span>
             <div className="flex items-center space-x-4">
-              {object.duracion != null && (
-                <span className="inline-flex items-center space-x-2 text-blue-800">
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6l4 2M12 4a8 8 0 100 16 8 8 0 000-16z"
-                    />
-                  </svg>
-                  <span>{object.duracion} días</span>
-                </span>
-              )}
+              <div className="flex items-center space-x-4">
+                {object.duracion != null && (
+                  <span className="inline-flex items-center space-x-2 text-blue-800">
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6l4 2M12 4a8 8 0 100 16 8 8 0 000-16z"
+                      />
+                    </svg>
+                    <span>{object.duracion} días</span>
+                  </span>
+                )}
+              </div>
+              <span>{new Date(object.createdAt).toLocaleDateString()}</span>
             </div>
-            <span>{new Date(object.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
-      </div>
-      <div className="flex space-x-2 pt-2 border-t border-gray-100">
-        <Link
-          to={`/objects/${object.id}`}
-          className="flex-1 btn-primary text-center text-sm py-2"
+      </Link>
+      {user?.role !== "admin" && (
+        <button
+          onClick={(e) => handleToggleFavorite(object, e)}
+          disabled={interestsLoading}
+          className={`absolute top-3 right-3 z-10 px-2 py-2 rounded-full transition-colors bg-white shadow group-hover:scale-110 ${
+            object.is_favorite
+              ? "text-red-600 hover:text-red-800 hover:bg-red-50"
+              : "text-gray-600 hover:text-primary-600 hover:bg-primary-50"
+          }`}
+          title={
+            object.is_favorite
+              ? "Remover de favoritos"
+              : "Agregar a favoritos"
+          }
         >
-          Ver Detalles
-        </Link>
-        {user?.role !== "admin" && (
-          <button
-            onClick={() => handleToggleFavorite(object)}
-            disabled={interestsLoading}
-            className={`px-3 py-2 rounded-lg transition-colors ${
-              object.is_favorite
-                ? "text-red-600 hover:text-red-800 hover:bg-red-50"
-                : "text-gray-600 hover:text-primary-600 hover:bg-primary-50"
-            }`}
-            title={
-              object.is_favorite
-                ? "Remover de favoritos"
-                : "Agregar a favoritos"
-            }
-          >
-            {object.is_favorite ? (
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            ) : (
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-            )}
-          </button>
-        )}
-      </div>
-    </Link>
+          {object.is_favorite ? (
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          ) : (
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          )}
+        </button>
+      )}
+    </div>
   );
 
   const SkeletonCard = () => (
