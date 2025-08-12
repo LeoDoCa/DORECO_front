@@ -76,7 +76,7 @@ const StatCard = ({ title, value, icon, color = "blue" }) => (
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { get } = useApi();
+  const { getSilence } = useApi();
   const [stats, setStats] = useState({
     totalPublicaciones: null,
     totalUsuarios: null,
@@ -88,7 +88,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const res = await get("api/users/statistics/");
+      const res = await getSilence("api/users/statistics/");
       if (res.success && res.data) {
         setStats({
           totalPublicaciones: res.data.total_active_publications,

@@ -5,7 +5,6 @@ import { Link, useNavigate } from "react-router-dom"
 import Skeleton from "react-loading-skeleton"
 import { useApi } from "@hooks/useApi"
 
-// Mapeo de status del backend a los nombres de pestañas y pills del frontend
 const STATUS_MAP = {
   pending: "Pendiente",
   resolved: "Aprobado",
@@ -18,7 +17,7 @@ const TAB_TO_STATUS = {
 }
 
 const Reports = () => {
-  const { get } = useApi()
+  const { getSilence } = useApi()
   const [reports, setReports] = useState([])
   const [filteredReports, setFilteredReports] = useState([])
   const [activeTab, setActiveTab] = useState("Todos")
@@ -27,7 +26,6 @@ const Reports = () => {
 
   useEffect(() => {
     loadReports()
-    // eslint-disable-next-line
   }, [])
 
   useEffect(() => {
@@ -42,12 +40,8 @@ const Reports = () => {
 
   const loadReports = async () => {
     setLoading(true)
-    // Consultar todos los reportes
-    const allRes = await get("api/reports/")
-    // Consultar reportes pendientes (opcional, pero útil si el endpoint da info extra)
-    // const pendingRes = await get("/reports/pending/")
+    const allRes = await getSilence("api/reports/")
     let allReports = Array.isArray(allRes.data) ? allRes.data : []
-    // Mapear los reportes a la estructura que espera el frontend
     const mapped = allReports.map((r) => ({
       id: r.id,
       objectName: r.publication_title,
@@ -86,13 +80,11 @@ const Reports = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Reportes y Análisis</h1>
         <p className="mt-1 text-sm text-gray-500">Revisa y gestiona los reportes de objetos enviados por los usuarios.</p>
       </div>
 
-      {/* Pestañas de Filtro */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-6" aria-label="Tabs">
           <TabButton name="Todos" />
