@@ -55,7 +55,8 @@ const ObjectDetails = () => {
         publication_date: obj.created_at,
         owner: {
           name: obj.owner_name,
-          avatar: obj.owner_photo
+          avatar: obj.owner_photo,
+          username: obj.owner_name,
 
         },
         keywords: obj.keywords,
@@ -89,41 +90,70 @@ const ObjectDetails = () => {
   };
 
   const handleContactOwner = async () => {
-    const { value: message, isConfirmed } = await Swal.fire({
-      title: "Contactar con el propietario",
-      text: "Escribe el mensaje que deseas enviar al propietario:",
-      input: "textarea",
-      inputPlaceholder: "¡Hola!, Aun sigue disponible?  ",
-      showCancelButton: true,
-      confirmButtonText: "Enviar mensaje",
-      cancelButtonText: "Cancelar",
-      icon: "question",
-      customClass: {
-        popup: "rounded-2xl",
-        confirmButton: "btn-primary",
-        cancelButton: "btn-secondary",
-        input: "border rounded p-2",
-      },
-      inputValidator: (value) => {
-        if (!value) return "Debes escribir un mensaje.";
-      },
-      buttonsStyling: false,
-    });
+  if (user && object && object.owner && user.username === object.owner.username) {
+    showError("No puedes enviarte mensajes a ti mismo");
+    return;
+  }
 
-    if (isConfirmed && message) {
-      // Realizar POST al endpoint de contacto
+  const { value: message, isConfirmed } = await Swal.fire({
+    title: "Contactar con el propietario",
+    text: "Escribe el mensaje que deseas enviar al propietario:",
+    input: "textarea",
+    inputPlaceholder: "¡Hola! ¿Aún sigue disponible?",
+    showCancelButton: true,
+    confirmButtonText: "Enviar mensaje",
+    cancelButtonText: "Cancelar",
+    icon: "question",
+    customClass: {
+      popup: "rounded-2xl",
+      confirmButton: "btn-primary",
+      cancelButton: "btn-secondary",
+      input: "border rounded p-2",
+    },
+    inputValidator: (value) => {
+      if (!value || !value.trim()) {
+        return "El mensaje no puede estar vacío.";
+      }
+      if (value.trim().length < 10) {
+        return "El mensaje debe tener al menos 10 caracteres.";
+      }
+      return null;
+    },
+    buttonsStyling: false,
+  });
+
+  if (isConfirmed && message) {
+    try {
       const response = await post(`/api/publications/${object.id}/send-message/`, {
-        message: message
+        message: message.trim()
       });
+      
       if (response && response.success) {
-        showSuccess("Solicitud de contacto enviada correctamente");
+        showSuccess("Mensaje enviado exitosamente");
       } else {
         showError("No se pudo enviar el mensaje. Intenta nuevamente.");
       }
-    } else if (isConfirmed) {
-      showError("Debes escribir un mensaje.");
+    } catch (error) {
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        
+        if (errorData.message) {
+          if (Array.isArray(errorData.message)) {
+            showError(errorData.message[0]);
+          } else {
+            showError(errorData.message);
+          }
+        } else if (errorData.error) {
+          showError(errorData.error);
+        } else {
+          showError("Error al enviar el mensaje. Intenta nuevamente.");
+        }
+      } else {
+        showError("Error de conexión. Verifica tu internet e intenta nuevamente.");
+      }
     }
-  };
+  }
+};
 
   const handleReportClick = async () => {
     const { value: formValues, isConfirmed } = await Swal.fire({
