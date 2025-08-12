@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }) => {
       Swal.fire({
         icon: "error",
         title: "Error de Autenticación",
-        text: errorMessage,
+        text: "Credenciales inválidas",
         confirmButtonText: "Intentar de nuevo",
         customClass: {
           popup: "rounded-2xl",
@@ -157,7 +157,6 @@ export const AuthProvider = ({ children }) => {
         phone_number: userData.phone_number,
       }
       const response = await axiosClient.post("/auth/register/", payload)
-      // Si la respuesta es 201 y contiene los datos del usuario, mostrar éxito
       if (response.status === 201 && response.data && response.data.id) {
         Swal.fire({
           icon: "success",
@@ -172,7 +171,6 @@ export const AuthProvider = ({ children }) => {
         dispatch({ type: "SET_LOADING", payload: false })
         return { success: true, user: response.data }
       }
-      // Si la respuesta contiene token y user (caso anterior)
       const { token, user } = response.data
       if (token && user) {
         AuthManager.setAuthData(token, user)
@@ -193,10 +191,8 @@ export const AuthProvider = ({ children }) => {
         dispatch({ type: "SET_LOADING", payload: false })
         return { success: true, user, token }
       }
-      // Si no, error genérico
       throw new Error("Respuesta inesperada del servidor")
     } catch (error) {
-      // Procesar errores de validación del backend
       const errorData = error.response?.data
       let errorMessage = "Error al registrar usuario"
       if (errorData) {
@@ -213,7 +209,7 @@ export const AuthProvider = ({ children }) => {
       Swal.fire({
         icon: "error",
         title: "Error de Registro",
-        text: errorMessage,
+        text: "Veridica los datos ingresados",
         confirmButtonText: "Intentar de nuevo",
         customClass: {
           popup: "rounded-2xl",

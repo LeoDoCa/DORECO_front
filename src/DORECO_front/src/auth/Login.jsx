@@ -35,7 +35,7 @@ const Login = () => {
         setFieldError("password", " ")
       }
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("Login error:", "Error credendciales invalidas")
     } finally {
       setSubmitting(false)
     }

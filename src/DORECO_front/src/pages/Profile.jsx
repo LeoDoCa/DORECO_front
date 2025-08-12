@@ -438,7 +438,10 @@ const Profile = () => {
                 }
               };
               return (
-                <div key={post.id} className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
+                <div
+                  key={post.id}
+                  className={`bg-white shadow rounded-lg overflow-hidden flex flex-col relative ${post.is_active === false ? 'opacity-60 pointer-events-none' : ''}`}
+                >
                   {post.images && post.images.length > 0 && (
                     <img
                       src={post.images[0].startsWith("http") ? post.images[0] : `http://localhost:8000${post.images[0]}`}
@@ -469,11 +472,17 @@ const Profile = () => {
                         ${post.price}
                       </span>
                     </div>
+                    {post.is_active === false && (
+                      <div className="mt-2 text-xs text-red-700 font-semibold bg-red-100 rounded p-1 text-center">
+                        Esta publicación ha sido reportada y no está disponible
+                      </div>
+                    )}
                   </div>
                   <div className="border-t border-gray-100 p-2 flex space-x-1">
                     <button
                       onClick={() => navigate(`/publish?id=${post.id}`)}
-                      className="flex-1 py-1 rounded-lg justify-center bg-gray-700 hover:bg-gray-800 text-white font-medium transition text-center flex items-center text-xs"
+                      className={`flex-1 py-1 rounded-lg justify-center bg-gray-700 hover:bg-gray-800 text-white font-medium transition text-center flex items-center text-xs ${post.status === 'completed' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={post.status === 'completed'}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -483,11 +492,11 @@ const Profile = () => {
                     </button>
                     <button
                       onClick={() => openQRModal(post)}
-                      className={`flex-1 py-1 rounded-lg justify-center text-white font-medium transition flex items-center gap-1 text-xs ${post.status === "available"
+                      className={`flex-1 py-1 rounded-lg justify-center text-white font-medium transition flex items-center gap-1 text-xs ${post.status === "available" && post.is_active !== false
                         ? "bg-blue-600 hover:bg-blue-700"
                         : "bg-blue-300 cursor-not-allowed"
                         }`}
-                      disabled={post.status !== "available"}
+                      disabled={post.status !== "available" || post.is_active === false}
                     >
                       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="2" y="2" width="5" height="5" fill="white" />
@@ -501,7 +510,7 @@ const Profile = () => {
                       </svg>
                       QR
                     </button>
-                    {post.status === "available" ? (
+                    {post.status === "available" && post.is_active !== false ? (
                       <button
                         onClick={() => handleDeliver(post.id)}
                         className="flex-1 justify-center py-1 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition flex items-center gap-1 text-xs"

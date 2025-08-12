@@ -39,6 +39,7 @@ const PublishObject = () => {
     { label: "Malo", value: "poor" },
   ];
 
+  // Validación de imágenes: en edición, si ya hay imágenes previas, no es obligatorio subir nuevas
   const validationSchema = Yup.object().shape({
     name: Yup.string()
       .min(3, "El nombre debe tener al menos 3 caracteres")
@@ -103,6 +104,8 @@ const PublishObject = () => {
         const res = await get(`/api/publications/${editId}/`);
         if (res.success) {
           const obj = res.data.publication_data || res.data;
+          // Previews de imágenes
+          const previews = [obj.image1, obj.image2, obj.image3].filter(Boolean).map(img => img.startsWith("http") ? img : `http://localhost:8000${img}`);
           setInitialValues({
             name: obj.title || "",
             description: obj.description || "",
@@ -111,7 +114,7 @@ const PublishObject = () => {
             otherCategoryDescription: "",
             condition: obj.condition || "",
             tags: obj.keywords || "",
-            images: [], // No se pueden precargar archivos, solo previews
+            images: previews, // Ahora las imágenes precargadas van en el array images
             publication_type:
               obj.publication_type === "donation"
                 ? "Donar"
@@ -123,8 +126,6 @@ const PublishObject = () => {
             price: obj.price || "",
             loan_days: obj.duration || "",
           });
-          // Previews de imágenes
-          const previews = [obj.image1, obj.image2, obj.image3].filter(Boolean).map(img => img.startsWith("http") ? img : `http://localhost:8000${img}`);
           setImagePreview(previews);
         }
       } finally {
@@ -213,30 +214,75 @@ const PublishObject = () => {
         categoryId = categoryData.id;
       }
 
+      // Limpiar atributos según el tipo de publicación
+      let pubType = "donation";
+      if (values.publication_type === "Vender") pubType = "sale";
+      else if (values.publication_type === "Prestar") pubType = "loan";
+
+      // Ajustar valores según reglas de negocio
+      let price = values.price;
+      let loan_days = values.loan_days;
+      if (pubType === "donation") {
+        price = null;
+        loan_days = null;
+      } else if (pubType === "sale") {
+        loan_days = null;
+      } else if (pubType === "loan") {
+        price = null;
+      }
+
       // Crear o actualizar publicación
       const formData = new FormData();
       formData.append("title", values.name);
       formData.append("description", values.description);
       formData.append("category", categoryId);
       formData.append("condition", values.condition);
-
-      let pubType = "donation";
-      if (values.publication_type === "Vender") pubType = "sale";
-      else if (values.publication_type === "Prestar") pubType = "loan";
       formData.append("publication_type", pubType);
-
       formData.append("keywords", values.tags || "");
-
       if (pubType === "sale") {
-        formData.append("price", values.price);
+        formData.append("price", price);
       }
       if (pubType === "loan") {
-        formData.append("duration", values.loan_days);
+        formData.append("duration", loan_days);
       }
 
-      values.images.forEach((file, idx) => {
-        formData.append(`image${idx + 1}`, file);
-      });
+      // Imágenes: en edición, enviar tanto archivos nuevos como URLs de imágenes existentes
+      let imageCount = 0;
+      if (isEdit) {
+        // En edición, enviar las imágenes existentes (previews que son URLs) y los archivos nuevos
+        const allImages = [];
+        // Primero, agregar las imágenes existentes (previews que son URLs)
+        if (imagePreview && imagePreview.length > 0) {
+          imagePreview.forEach((img) => {
+            // Si la imagen no está en values.images (que son archivos nuevos), es una URL existente
+            if (
+              !values.images.find(
+                (file) => typeof file === 'string' && file === img
+              ) &&
+              typeof img === 'string'
+            ) {
+              allImages.push(img);
+            }
+          });
+        }
+        // Luego, agregar los archivos nuevos
+        if (values.images && values.images.length > 0) {
+          values.images.forEach((file) => {
+            allImages.push(file);
+          });
+        }
+        // Agregar todas las imágenes al FormData
+        allImages.forEach((img, idx) => {
+          formData.append(`image${idx + 1}`, img);
+        });
+      } else {
+        // En creación, solo enviar los archivos seleccionados
+        if (values.images && values.images.length > 0) {
+          values.images.forEach((file, idx) => {
+            formData.append(`image${idx + 1}`, file);
+          });
+        }
+      }
 
       formData.append("is_active", true);
 
@@ -299,6 +345,8 @@ const PublishObject = () => {
           enableReinitialize
           initialValues={initialValues}
           validationSchema={validationSchema}
+          validateOnChange={true}
+          validationContext={{ isEdit, imagePreview }}
           onSubmit={handleSubmit}
         >
           {({ values, setFieldValue, errors, touched, isSubmitting }) => (
