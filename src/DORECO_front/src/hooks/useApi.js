@@ -36,7 +36,25 @@ export const useApi = () => {
 
         return { success: true, data: response.data }
       } catch (err) {
-        const errorMessage = err.response?.data?.message || "Ha ocurrido un error, intentalo más tarde"
+        const getErrorMessage = (errorData) => {
+          // Primero intentar obtener errores de validación de Django REST Framework
+          if (errorData?.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+            return errorData.non_field_errors[0];
+          }
+          // Luego intentar otros formatos comunes
+          if (errorData?.detail) {
+            return errorData.detail;
+          }
+          if (errorData?.message) {
+            return errorData.message;
+          }
+          if (errorData?.error) {
+            return errorData.error;
+          }
+          return "Ha ocurrido un error, intentalo más tarde";
+        };
+
+        const errorMessage = getErrorMessage(err.response?.data);
         setError(errorMessage)
 
         if (showErrorMessage) {

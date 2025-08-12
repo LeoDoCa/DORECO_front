@@ -16,9 +16,14 @@ export const useInterests = () => {
     async (objectId) => {
       if (!user) return false;
       setLoading(true);
+      
+      const response = await post(`/api/publications/${objectId}/toggle-favorite/`, {}, {
+        showErrorMessage: false, // Deshabilitamos el mensaje automático
+        showSuccessMessage: false // Deshabilitamos el mensaje automático
+      });
+      
       try {
-        const response = await post(`/api/publications/${objectId}/toggle-favorite/`);
-        if (response && response.success && response.data.is_favorite) {
+        if (response && response.success && response.data && response.data.is_favorite) {
           const currentInterests = user.interests || [];
           if (!currentInterests.includes(objectId)) {
             const updatedInterests = [...currentInterests, objectId];
@@ -26,13 +31,15 @@ export const useInterests = () => {
           }
           showSuccess("Objeto agregado a tus favoritos");
           return true;
-        } else {
+        } 
+        else if (response && !response.success) {
+          showError(response.error || "No se pudo agregar a favoritos");
+          return false;
+        }
+        else {
           showError("No se pudo agregar a favoritos");
           return false;
         }
-      } catch (error) {
-        showError("Error al agregar a favoritos");
-        return false;
       } finally {
         setLoading(false);
       }
