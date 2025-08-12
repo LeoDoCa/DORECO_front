@@ -8,7 +8,7 @@ const API_UPDATE = "/auth/update-profile/";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { get, getSilence, put, loading: apiLoading, error: apiError } = useApi();
+  const { getSilence, put, loading: apiLoading, error: apiError } = useApi();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -27,7 +27,7 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const res = await get(API_PROFILE);
+      const res = await getSilence(API_PROFILE);
       if (res.success) {
         const data = res.data;
         setUser(data);
@@ -121,7 +121,7 @@ const Profile = () => {
   const fetchMyPublications = async () => {
     setPostsLoading(true);
     setPostsError("");
-    const res = await get("/api/publications/my_publications/");
+    const res = await getSilence("/api/publications/my_publications/");
     if (res.success) {
       const mapped = res.data.map(obj => ({
         id: obj.id,

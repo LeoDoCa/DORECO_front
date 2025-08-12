@@ -10,7 +10,7 @@ import Skeleton from "react-loading-skeleton";
 const MyInterests = () => {
   const { user } = useAuth();
   const { confirmAction } = useConfirmAction();
-  const { get, post } = useApi();
+  const { getSilence, post } = useApi();
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,7 @@ const MyInterests = () => {
 
   const loadInterestedObjects = async () => {
     setLoading(true);
-    const response = await get("/api/favorites/");
+    const response = await getSilence("/api/favorites/");
     if (response && response.success) {
       const mapped = response.data.map(fav => ({
         id: fav.publication,

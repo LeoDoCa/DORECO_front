@@ -16,7 +16,7 @@ function getRandomColor() {
 }
 
 const Categories = () => {
-  const { get, post, put, delete: deleteApi, loading } = useApi()
+  const { getSilence, post, put, delete: deleteApi, loading } = useApi()
   const { confirmAction, showSuccess } = useConfirmAction()
   const [categories, setCategories] = useState([])
   const [suggestedCategories, setSuggestedCategories] = useState([])
@@ -34,7 +34,7 @@ const Categories = () => {
   const loadCategories = async () => {
     const token = AuthManager.getToken()
     const config = { headers: { Authorization: `Bearer ${token}` } }
-    const res = await get("http://localhost:8000/api/categories/", config)
+    const res = await getSilence("http://localhost:8000/api/categories/", config)
     if (res.success && Array.isArray(res.data)) {
       const categoriesWithColor = res.data.map(cat => ({
         ...cat,
@@ -50,7 +50,7 @@ const Categories = () => {
   const loadSuggestedCategories = async () => {
     const token = AuthManager.getToken()
     const config = { headers: { Authorization: `Bearer ${token}` } }
-    const res = await get("http://localhost:8000/api/categories/suggested/", config)
+    const res = await getSilence("http://localhost:8000/api/categories/suggested/", config)
     if (res.success && Array.isArray(res.data)) {
       const suggestionsWithColor = res.data.map(cat => ({
         ...cat,
