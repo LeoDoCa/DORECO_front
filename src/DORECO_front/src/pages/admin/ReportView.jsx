@@ -24,7 +24,7 @@ const ReportView = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { get, patch, put } = useApi()
+  const { getSilence, patch, put } = useApi()
   const [loading, setLoading] = useState(true)
   const [report, setReport] = useState(null)
   const [publication, setPublication] = useState(null)
@@ -40,14 +40,12 @@ const ReportView = () => {
 
   const loadReportAndPublication = async () => {
     setLoading(true)
-    // 1. Obtener detalles del reporte
     let reportData = null
     let publicationId = navState.publicationId
     let reason = navState.reason
     let createdAt = navState.createdAt
-    // Si no vienen por navegación, consulta el reporte
     if (!publicationId || !reason || !createdAt) {
-      const res = await get(`api/reports/${id}/`)
+      const res = await getSilence(`api/reports/${id}/`)
       if (res.success) {
         reportData = res.data
         publicationId = reportData.publication_id
@@ -55,9 +53,8 @@ const ReportView = () => {
         createdAt = reportData.created_at
       }
     }
-    // 2. Obtener detalles de la publicación
     if (publicationId) {
-      const pubRes = await get(`api/publications/${publicationId}`)
+      const pubRes = await getSilence(`api/publications/${publicationId}`)
       if (pubRes.success) {
         setPublication(pubRes.data)
       }
@@ -73,13 +70,11 @@ const ReportView = () => {
 
   const handleResolve = async (status) => {
     setActionLoading(true)
-    // Si se va a aprobar el reporte, primero desactivar la publicación
     if (status === "resolved" && publication) {
-      // Construir el body para el PUT con todos los datos requeridos
       const pubBody = {
         title: publication.title,
         description: publication.description,
-        category: publication.category, // O category_id según backend
+        category: publication.category,
         condition: publication.condition,
         publication_type: publication.publication_type,
         keywords: publication.keywords,
@@ -89,7 +84,6 @@ const ReportView = () => {
         image3: publication.image3,
         is_active: false,
       }
-      // PUT a la publicación
       const putRes = await put(`api/publications/${publication.id}/`, pubBody)
       if (!putRes.success) {
         setActionLoading(false)
@@ -97,7 +91,6 @@ const ReportView = () => {
         return
       }
     }
-    // Cambiar el status del reporte
     const body =
       status === "resolved"
         ? {
@@ -182,9 +175,13 @@ const ReportView = () => {
                 <InfoField label="Categoría" value={publication?.category_name || "-"} />
                 <InfoField label="Estado del Objeto" value={CONDITION_MAP[publication?.condition] || "-"} isPill />
                 <InfoField label="Tipo de Publicación" value={TYPE_MAP[publication?.publication_type] || "-"} isPill />
-                <InfoField label="Precio" value={publication ? `$${publication.price} MXN` : "-"} />
+                {publication && publication.price !== null && (
+                  <InfoField label="Precio" value={`${publication.price} MXN`} />
+                )}
+                {publication && publication.duration !== null && (
+                  <InfoField label="Duración" value={`${publication.duration} días`} />
+                )}
                 <InfoField label="Fecha del Reporte" value={report.createdAt?.split("T")[0] || "-"} />
-                <InfoField label="Estado del Reporte" value={STATUS_MAP[report.status] || "-"} isPill />
               </dl>
             </div>
             <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-end space-x-3">
