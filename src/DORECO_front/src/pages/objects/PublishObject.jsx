@@ -1,4 +1,8 @@
 import { useState, useEffect } from "react";
+
+// Estados globales para imágenes (Files y urls)
+let existingImages = []; // Guardará solo URLs
+let newImages = [];      // Guardará archivos File
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
@@ -42,31 +46,45 @@ const PublishObject = () => {
   // Validación de imágenes: en edición, si ya hay imágenes previas, no es obligatorio subir nuevas
   const validationSchema = Yup.object().shape({
     name: Yup.string()
+      .trim("No se permiten solo espacios en el nombre")
       .min(3, "El nombre debe tener al menos 3 caracteres")
       .max(100, "El nombre no puede exceder 100 caracteres")
-      .required("El nombre es requerido"),
+      .required("El nombre es requerido")
+      .test('not-empty', 'El nombre no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
     description: Yup.string()
+      .trim("No se permiten solo espacios en la descripción")
       .min(10, "La descripción debe tener al menos 10 caracteres")
       .max(1000, "La descripción no puede exceder 1000 caracteres")
-      .required("La descripción es requerida"),
-    category: Yup.string().required("La categoría es requerida"),
+      .required("La descripción es requerida")
+      .test('not-empty', 'La descripción no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
+    category: Yup.string()
+      .trim("No se permiten solo espacios en la categoría")
+      .required("La categoría es requerida")
+      .test('not-empty', 'La categoría no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
     otherCategory: Yup.string().when("category", {
       is: (val) => val === "otros",
       then: (schema) =>
         schema
+          .trim("No se permiten solo espacios en la sugerencia de categoría")
           .min(3, "La sugerencia debe tener al menos 3 caracteres")
-          .required("Debes ingresar una sugerencia de categoría"),
+          .required("Debes ingresar una sugerencia de categoría")
+          .test('not-empty', 'La sugerencia de categoría no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
       otherwise: (schema) => schema.notRequired().nullable(),
     }),
     otherCategoryDescription: Yup.string().when("category", {
       is: (val) => val === "otros",
       then: (schema) =>
         schema
+          .trim("No se permiten solo espacios en la descripción de la categoría")
           .min(3, "La descripción debe tener al menos 3 caracteres")
-          .required("Debes ingresar una descripción para la categoría"),
+          .required("Debes ingresar una descripción para la categoría")
+          .test('not-empty', 'La descripción de la categoría no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
       otherwise: (schema) => schema.notRequired().nullable(),
     }),
-    condition: Yup.string().required("El estado es requerido"),
+    condition: Yup.string()
+      .trim("No se permiten solo espacios en el estado")
+      .required("El estado es requerido")
+      .test('not-empty', 'El estado no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
     tags: Yup.string(),
     images: Yup.array().min(1, "Debe subir al menos una imagen"),
     publication_type: Yup.string().required(
@@ -137,29 +155,32 @@ const PublishObject = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId]);
 
+  // Modificado: separar nuevas imágenes (Files) y actualizar previews
   const handleImageChange = (event, setFieldValue, currentImages) => {
     const files = Array.from(event.target.files);
-    const remainingSlots = 3 - currentImages.length;
-
-    if (files.length > remainingSlots) {
-      alert(`Solo puedes subir ${remainingSlots} imagen(es) más`);
-      return;
-    }
-
-    const previews = [];
-    const updatedFiles = [...currentImages, ...files];
-
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        previews.push(e.target.result);
-        if (previews.length === files.length) {
-          setImagePreview((prev) => [...prev, ...previews]);
-          setFieldValue("images", updatedFiles);
+    // Asegura que images siempre tenga exactamente 3 slots
+    let images = currentImages ? [...currentImages] : [];
+    // Ajusta inicialmente a 3 slots para facilitar fills, sin cortar images válidas
+    while (images.length < 3) images.push(null);
+    // Inserta archivos en los huecos
+    let fileIdx = 0;
+    // Busca el primer slot vacío para cada file
+    for (let f of files) {
+      let inserted = false;
+      for (let i = 0; i < 3; ++i) {
+        if (!images[i]) {
+          images[i] = f;
+          inserted = true;
+          break;
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      }
+      if (!inserted && images.length < 3) {
+        images.push(f);
+      }
+    }
+    images = images.slice(0, 3); // Asegura nunca más de 3
+    setFieldValue('images', images);
+    setImagePreview(images.map(img => !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))));
   };
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
@@ -246,42 +267,16 @@ const PublishObject = () => {
         formData.append("duration", loan_days);
       }
 
-      // Imágenes: en edición, enviar tanto archivos nuevos como URLs de imágenes existentes
-      let imageCount = 0;
-      if (isEdit) {
-        // En edición, enviar las imágenes existentes (previews que son URLs) y los archivos nuevos
-        const allImages = [];
-        // Primero, agregar las imágenes existentes (previews que son URLs)
-        if (imagePreview && imagePreview.length > 0) {
-          imagePreview.forEach((img) => {
-            // Si la imagen no está en values.images (que son archivos nuevos), es una URL existente
-            if (
-              !values.images.find(
-                (file) => typeof file === 'string' && file === img
-              ) &&
-              typeof img === 'string'
-            ) {
-              allImages.push(img);
-            }
-          });
+      // ARMADO DE ENVÍO: image1, image2, image3 SIEMPRE en el orden visual presentado
+      const allImages = [...values.images];
+      for (let i = 0; i < 3; ++i) {
+        const img = allImages[i];
+        if (img instanceof File) {
+          formData.append(`image${i + 1}`, img);
+        } else if (!img) { // null o undefined
+          formData.append(`image${i + 1}`, '');
         }
-        // Luego, agregar los archivos nuevos
-        if (values.images && values.images.length > 0) {
-          values.images.forEach((file) => {
-            allImages.push(file);
-          });
-        }
-        // Agregar todas las imágenes al FormData
-        allImages.forEach((img, idx) => {
-          formData.append(`image${idx + 1}`, img);
-        });
-      } else {
-        // En creación, solo enviar los archivos seleccionados
-        if (values.images && values.images.length > 0) {
-          values.images.forEach((file, idx) => {
-            formData.append(`image${idx + 1}`, file);
-          });
-        }
+        // Si es string (URL), no se envía, backend la conserva
       }
 
       formData.append("is_active", true);
@@ -298,6 +293,10 @@ const PublishObject = () => {
         showSuccess("Objeto publicado correctamente");
       }
       navigate("/objects");
+
+      // Limpieza de imágenes globales tras acción
+      newImages = [];
+      existingImages = [];
     } catch (error) {
       console.error("Error publicando/actualizando objeto:", error);
     }
@@ -322,6 +321,15 @@ const PublishObject = () => {
 
     fetchCategories();
   }, []);
+
+  // Mantener sincronizado el estado global de imágenes existentes cuando se carga la publicación en edición
+  useEffect(() => {
+    if (isEdit && initialValues.images && initialValues.images.length > 0) {
+      // Asumimos que las existentes son URLs
+      existingImages = initialValues.images.filter(img => typeof img === 'string');
+      newImages = initialValues.images.filter(img => typeof img === 'object');
+    }
+  }, [isEdit, initialValues.images]);
 
   if (loadingInitial) {
     return <div className="p-8 text-center">Cargando publicación...</div>;
@@ -717,35 +725,37 @@ const PublishObject = () => {
                     Subir Imágenes (máximo 3)
                   </label>
 
-                  {imagePreview.length > 0 && (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                      {imagePreview.map((preview, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={preview || "/placeholder.svg"}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                            onClick={() => {
-                              const newPreviews = imagePreview.filter(
-                                (_, i) => i !== index
-                              );
-                              setImagePreview(newPreviews);
-                              const newFiles = Array.from(values.images).filter(
-                                (_, i) => i !== index
-                              );
-                              setFieldValue("images", newFiles);
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                    {[0,1,2].map(index => (
+                      <div key={index} className="relative">
+                        {values.images[index] && (typeof values.images[index] === 'string' || values.images[index] instanceof File) ? (
+                          <>
+                            <img
+                              src={typeof values.images[index] === 'string' ? values.images[index] : URL.createObjectURL(values.images[index])}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                              onClick={() => {
+                                let imgs = [...values.images];
+                                imgs[index] = null;
+                                setFieldValue("images", imgs);
+                                setImagePreview(imgs.map(img =>
+                                  !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))
+                                ));
+                              }}
+                            >
+                              ×
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Input grande solo para crear (no editar): */}
+                  {!isEdit && (
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
                     <div className="space-y-1 text-center">
                       <svg
@@ -777,7 +787,7 @@ const PublishObject = () => {
                             onChange={(e) =>
                               handleImageChange(e, setFieldValue, values.images)
                             }
-                            disabled={values.images.length >= 3}
+                            disabled={values.images.filter(v=>v).length >= 3}
                           />
                         </label>
                         <p className="pl-1">o arrastra y suelta</p>
@@ -786,7 +796,36 @@ const PublishObject = () => {
                         PNG, JPG, GIF hasta 10MB cada una
                       </p>
                     </div>
-                  </div>
+                  </div>)}
+                  {/* Input oculto individual en edición para agregar nueva imagen (slot vacío) */}
+                  {isEdit && (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mt-2">
+                      {[0,1,2].map(index => (
+                        (!values.images[index]) ? (
+                          <label key={`edit-add-${index}`} className="w-full h-24 flex items-center justify-center border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-gray-400 mt-2">
+                            <span className="text-gray-400 text-4xl">+</span>
+                            <input
+                              type="file"
+                              className="sr-only"
+                              accept="image/*"
+                              multiple={false}
+                              onChange={e => {
+                                if(e.target.files && e.target.files[0]) {
+                                  let imgs = [...values.images];
+                                  imgs[index] = e.target.files[0];
+                                  setFieldValue("images", imgs);
+                                  setImagePreview(imgs.map(img =>
+                                    !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))
+                                  ));
+                                }
+                              }}
+                              disabled={values.images.filter(v => v).length >= 3}
+                            />
+                          </label>
+                        ) : null
+                      ))}
+                    </div>
+                  )}
                   <ErrorMessage
                     name="images"
                     component="div"

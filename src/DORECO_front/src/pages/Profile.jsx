@@ -2,9 +2,55 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "@hooks/useApi";
 import { AuthManager } from "@config/context/auth-manager";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import * as Yup from "yup";
 
 const API_PROFILE = "/auth/profile/";
 const API_UPDATE = "/auth/update-profile/";
+
+const profileSchema = Yup.object().shape({
+  name: Yup.string()
+    .trim("No se permiten solo espacios en el nombre")
+    .min(2, "El nombre debe tener al menos 2 caracteres")
+    .max(50, "El nombre no puede exceder 50 caracteres")
+    .required("El nombre es requerido")
+    .test('not-empty', 'El nombre no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+  surnames: Yup.string()
+    .trim("No se permiten solo espacios en los apellidos")
+    .min(2, "Los apellidos deben tener al menos 2 caracteres")
+    .max(50, "Los apellidos no pueden exceder 50 caracteres")
+    .required("Los apellidos son requeridos")
+    .test('not-empty', 'Los apellidos no pueden estar vacíos o solo contener espacios', value => value && value.trim() !== ''),
+  email: Yup.string()
+    .trim("No se permiten solo espacios en el email")
+    .email("Debes ingresar un email válido")
+    .required("El email es requerido")
+    .test('not-empty', 'El email no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+  username: Yup.string()
+    .trim("No se permiten solo espacios en el usuario")
+    .min(2, "El usuario debe tener al menos 2 caracteres")
+    .max(20, "El usuario no puede exceder 20 caracteres")
+    .required("El usuario es requerido")
+    .test('not-empty', 'El usuario no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+  phone_number: Yup.string()
+    .trim("No se permiten solo espacios en el teléfono")
+    .matches(/^\d{10}$/, "El teléfono debe tener 10 dígitos")
+    .nullable(),
+  password: Yup.string()
+    .trim("No se permiten solo espacios en la contraseña")
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "La contraseña debe contener al menos una mayúscula, una minúscula y un número")
+    .test('password-empty', 'La contraseña no puede estar vacía o solo contener espacios', function(value) {
+      if (!value) return true; // Solo valida si se provee
+      return value.trim() !== '';
+    }),
+  password_confirm: Yup.string()
+    .oneOf([Yup.ref("password"), null], "Las contraseñas deben coincidir")
+    .test('password-confirm-empty', 'La confirmación no puede estar vacía o solo contener espacios', function(value) {
+      if (!this.parent.password && !value) return true; // Solo valida si la password está presente
+      return value && value.trim() !== '';
+    }),
+});
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -12,16 +58,6 @@ const Profile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    surnames: "",
-    email: "",
-    username: "",
-    phone_number: "",
-    photo: "",
-    password: "",
-    password_confirm: "",
-  });
   const [photoPreview, setPhotoPreview] = useState("");
   const [error, setError] = useState("");
 
@@ -31,89 +67,76 @@ const Profile = () => {
       if (res.success) {
         const data = res.data;
         setUser(data);
-        setFormData({
-          name: data.name || "",
-          surnames: data.surnames || "",
-          email: data.email || "",
-          username: data.username || "",
-          phone_number: data.phone_number || "",
-          photo: data.photo || "",
-          password: "",
-          password_confirm: "",
-        });
         setPhotoPreview(data.photo ? (data.photo.startsWith("http") ? data.photo : `http://localhost:8000${data.photo}`) : "/placeholder.svg");
       } else {
         setError("No se pudo cargar el perfil");
       }
       setLoading(false);
     };
-
     fetchProfile();
     fetchMyPublications();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === "photo" && files && files[0]) {
-      setFormData({ ...formData, photo: files[0] });
-      setPhotoPreview(URL.createObjectURL(files[0]));
-    } else {
-      setFormData({ ...formData, [name]: value });
+  const handleCancel = (resetForm) => {
+    setEditMode(false);
+    if (user) {
+      resetForm({
+        values: {
+          name: user.name || "",
+          surnames: user.surnames || "",
+          email: user.email || "",
+          username: user.username || "",
+          phone_number: user.phone_number || "",
+          photo: user.photo || "",
+          password: "",
+          password_confirm: "",
+        }
+      });
+      setPhotoPreview(user.photo ? (user.photo.startsWith("http") ? user.photo : `http://localhost:8000${user.photo}`) : "/placeholder.svg");
+      setError("");
     }
   };
 
-  const handleCancel = () => {
-    setEditMode(false);
-    setFormData({
-      name: user.name || "",
-      surnames: user.surnames || "",
-      email: user.email || "",
-      username: user.username || "",
-      phone_number: user.phone_number || "",
-      photo: user.photo || "",
-      password: "",
-      password_confirm: "",
-    });
-    setPhotoPreview(user.photo ? (user.photo.startsWith("http") ? user.photo : `http://localhost:8000${user.photo}`) : "/placeholder.svg");
-    setError("");
-  };
-
-  const handleSave = async () => {
+  const handleSave = async (values, actions) => {
     setError("");
     const form = new FormData();
-    form.append("name", formData.name);
-    form.append("surnames", formData.surnames);
-    form.append("email", formData.email);
-    form.append("username", formData.username);
-    form.append("phone_number", formData.phone_number || "");
-    if (formData.photo && formData.photo instanceof File) {
-      form.append("photo", formData.photo);
+    form.append("name", values.name);
+    form.append("surnames", values.surnames);
+    form.append("email", values.email);
+    form.append("username", values.username);
+    form.append("phone_number", values.phone_number || "");
+    if (values.photo && values.photo instanceof File) {
+      form.append("photo", values.photo);
     }
-    if (formData.password) {
-      form.append("password", formData.password);
-      form.append("password_confirm", formData.password_confirm);
+    if (values.password) {
+      form.append("password", values.password);
+      form.append("password_confirm", values.password_confirm);
     }
     const res = await put(API_UPDATE, form, { headers: { 'Content-Type': 'multipart/form-data' } });
     if (res.success) {
       const updated = res.data;
       setUser(updated);
       setEditMode(false);
-      setFormData({
-        name: updated.name || "",
-        surnames: updated.surnames || "",
-        email: updated.email || "",
-        username: updated.username || "",
-        phone_number: updated.phone_number || "",
-        photo: updated.photo || "",
-        password: "",
-        password_confirm: "",
+      actions.resetForm({
+        values: {
+          name: updated.name || "",
+          surnames: updated.surnames || "",
+          email: updated.email || "",
+          username: updated.username || "",
+          phone_number: updated.phone_number || "",
+          photo: updated.photo || "",
+          password: "",
+          password_confirm: "",
+        }
       });
       setPhotoPreview(updated.photo ? (updated.photo.startsWith("http") ? updated.photo : `http://localhost:8000${updated.photo}`) : "/placeholder.svg");
     } else {
       setError(res.error || "Error al actualizar perfil");
     }
+    actions.setSubmitting(false);
   };
 
+  // ... resto de publicaciones y QR code queda igual
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState("");
@@ -149,30 +172,7 @@ const Profile = () => {
     setPostsLoading(false);
   };
 
-  const handleDeliver = async (postId) => {
-    try {
-      const res = await fetch(`http://localhost:8000/api/publications/${postId}/change-status/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(AuthManager.getToken() && { 'Authorization': `Bearer ${AuthManager.getToken()}` })
-        },
-        body: JSON.stringify({ status: 'completed' })
-      });
-      if (res.ok) {
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId ? { ...p, status: "completed" } : p
-          )
-        );
-      } else {
-        alert('No se pudo marcar como entregado');
-      }
-    } catch (error) {
-      alert('Error de red al marcar como entregado');
-    }
-  };
-
+  // QR code modal se mantiene igual ...
   const [showQRModal, setShowQRModal] = useState(false);
   const [currentQRTitle, setCurrentQRTitle] = useState("");
   const [currentPostId, setCurrentPostId] = useState(null);
@@ -182,30 +182,25 @@ const Profile = () => {
 
   const openQRModal = async (post) => {
     if (post.status !== "available") return;
-    
     if (qrImageUrl && qrImageUrl.startsWith('blob:')) {
       URL.revokeObjectURL(qrImageUrl);
     }
-    
     setCurrentQRTitle(post.title);
     setCurrentPostId(post.id);
     setShowQRModal(true);
     setQrLoading(true);
     setQrError("");
     setQrImageUrl("");
-
     try {
       const token = AuthManager.getToken();
       const headers = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      
       const imageResponse = await fetch(`http://localhost:8000/api/publications/${post.id}/generate-qr/`, {
         method: 'GET',
         headers,
       });
-      
       if (imageResponse.ok) {
         const contentType = imageResponse.headers.get('content-type');
         if (contentType && contentType.startsWith('image/')) {
@@ -217,11 +212,9 @@ const Profile = () => {
         }
       } else {
         const errorText = await imageResponse.text();
-        console.error("Failed to fetch QR image:", imageResponse.status, errorText);
         setQrError(`Error ${imageResponse.status}: No se pudo generar el código QR`);
       }
     } catch (error) {
-      console.error("QR generation error:", error);
       setQrError("Error de conexión al generar el código QR");
     } finally {
       setQrLoading(false);
@@ -230,7 +223,6 @@ const Profile = () => {
 
   const downloadQR = () => {
     if (!qrImageUrl) return;
-    
     const link = document.createElement('a');
     link.href = qrImageUrl;
     link.download = `QR_${currentQRTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${currentPostId}.png`;
@@ -243,7 +235,6 @@ const Profile = () => {
     if (qrImageUrl && qrImageUrl.startsWith('blob:')) {
       URL.revokeObjectURL(qrImageUrl);
     }
-    
     setShowQRModal(false);
     setCurrentQRTitle("");
     setCurrentPostId(null);
@@ -265,132 +256,142 @@ const Profile = () => {
           alt="Foto de perfil"
           className="w-20 h-20 rounded-full object-cover border-2 border-blue-200"
         />
-
         {editMode ? (
-          <form className="w-full text-sm space-y-4" onSubmit={e => { e.preventDefault(); handleSave(); }}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium mb-1">Nombre</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-1.5"
-                  placeholder="Nombre"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">Apellidos</label>
-                <input
-                  type="text"
-                  name="surnames"
-                  value={formData.surnames}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-1.5"
-                  placeholder="Apellidos"
-                  required
-                />
-              </div>
-            </div>
+          <Formik
+            initialValues={{
+              name: user.name || "",
+              surnames: user.surnames || "",
+              email: user.email || "",
+              username: user.username || "",
+              phone_number: user.phone_number || "",
+              photo: user.photo || "",
+              password: "",
+              password_confirm: "",
+            }}
+            validationSchema={profileSchema}
+            enableReinitialize={true}
+            onSubmit={handleSave}
+          >
+            {({ isSubmitting, setFieldValue, values, errors, touched, resetForm }) => (
+              <Form className="w-full text-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Nombre</label>
+                    <Field
+                      type="text"
+                      name="name"
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.name && touched.name ? "border-red-500" : ""}`}
+                      placeholder="Nombre"
+                    />
+                    <ErrorMessage name="name" component="div" className="form-error text-xs text-red-600" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Apellidos</label>
+                    <Field
+                      type="text"
+                      name="surnames"
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.surnames && touched.surnames ? "border-red-500" : ""}`}
+                      placeholder="Apellidos"
+                    />
+                    <ErrorMessage name="surnames" component="div" className="form-error text-xs text-red-600" />
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-xs font-medium mb-1">Correo electrónico</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-1.5"
-                placeholder="Correo electrónico"
-                required
-              />
-            </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Correo electrónico</label>
+                  <Field
+                    type="email"
+                    name="email"
+                    className={`w-full border rounded-lg px-3 py-1.5 ${errors.email && touched.email ? "border-red-500" : ""}`}
+                    placeholder="Correo electrónico"
+                  />
+                  <ErrorMessage name="email" component="div" className="form-error text-xs text-red-600" />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium mb-1">Nombre de usuario</label>
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-1.5"
-                  placeholder="Nombre de usuario"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">Teléfono</label>
-                <input
-                  type="text"
-                  name="phone_number"
-                  value={formData.phone_number || ""}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-1.5"
-                  placeholder="Teléfono"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Nombre de usuario</label>
+                    <Field
+                      type="text"
+                      name="username"
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.username && touched.username ? "border-red-500" : ""}`}
+                      placeholder="Nombre de usuario"
+                    />
+                    <ErrorMessage name="username" component="div" className="form-error text-xs text-red-600" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Teléfono</label>
+                    <Field
+                      type="text"
+                      name="phone_number"
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.phone_number && touched.phone_number ? "border-red-500" : ""}`}
+                      placeholder="Teléfono"
+                    />
+                    <ErrorMessage name="phone_number" component="div" className="form-error text-xs text-red-600" />
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium mb-1">Nueva contraseña</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-1.5"
-                  placeholder="Nueva contraseña"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">Confirmar contraseña</label>
-                <input
-                  type="password"
-                  name="password_confirm"
-                  value={formData.password_confirm}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-1.5"
-                  placeholder="Confirmar contraseña"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Nueva contraseña</label>
+                    <Field
+                      type="password"
+                      name="password"
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.password && touched.password ? "border-red-500" : ""}`}
+                      placeholder="Nueva contraseña"
+                    />
+                    <ErrorMessage name="password" component="div" className="form-error text-xs text-red-600" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Confirmar contraseña</label>
+                    <Field
+                      type="password"
+                      name="password_confirm"
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.password_confirm && touched.password_confirm ? "border-red-500" : ""}`}
+                      placeholder="Confirmar contraseña"
+                    />
+                    <ErrorMessage name="password_confirm" component="div" className="form-error text-xs text-red-600" />
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-xs font-medium mb-1">Foto de perfil</label>
-              <input
-                type="file"
-                name="photo"
-                accept="image/*"
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-1.5"
-              />
-            </div>
-
-            {error && <div className="text-red-600 text-xs">{error}</div>}
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                Guardar
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-2"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Foto de perfil</label>
+                  <input
+                    type="file"
+                    name="photo"
+                    accept="image/*"
+                    className="w-full border rounded-lg px-3 py-1.5"
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        setFieldValue("photo", e.target.files[0]);
+                        setPhotoPreview(URL.createObjectURL(e.target.files[0]));
+                      }
+                    }}
+                  />
+                </div>
+                {error && <div className="text-red-600 text-xs">{error}</div>}
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Guardar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCancel(resetForm)}
+                    className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-2"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </Form>
+            )}
+          </Formik>
         ) : (
           <div className="w-full text-center text-sm space-y-1">
             <p className="font-semibold">{user.name} {user.surnames}</p>
@@ -402,7 +403,7 @@ const Profile = () => {
               onClick={() => setEditMode(true)}
               className="mt-4 bg-blue-900 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 mx-auto"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-edit">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
@@ -484,7 +485,7 @@ const Profile = () => {
                       className={`flex-1 py-1 rounded-lg justify-center bg-gray-700 hover:bg-gray-800 text-white font-medium transition text-center flex items-center text-xs ${post.status === 'completed' ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={post.status === 'completed'}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-edit">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
@@ -563,18 +564,14 @@ const Profile = () => {
                   alt="Código QR"
                   className="mx-auto mb-3 w-56 h-56 object-contain"
                   onError={(e) => {
-                    console.error("Error loading QR image:", e);
                     setQrError("Error al cargar el código QR");
                   }}
                 />
               ) : null}
-              
               <p className="text-gray-700 mb-2 text-sm">{currentQRTitle}</p>
-              
               {qrError && (
                 <p className="text-red-600 mb-2 text-xs">{qrError}</p>
               )}
-              
               <div className="flex gap-2 justify-center">
                 {qrError && (
                   <button

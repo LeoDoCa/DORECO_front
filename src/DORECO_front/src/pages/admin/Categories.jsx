@@ -71,10 +71,20 @@ const Categories = () => {
   }
 
   const categorySchema = Yup.object().shape({
-    name: Yup.string().min(2, "El nombre debe tener al menos 2 caracteres").max(50, "El nombre no puede exceder 50 caracteres").required("El nombre es requerido"),
-    description: Yup.string().max(200, "La descripción no puede exceder 200 caracteres").required("La descripción es requerida"),
+    name: Yup.string()
+      .trim("No se permiten solo espacios en el nombre")
+      .min(2, "El nombre debe tener al menos 2 caracteres")
+      .max(50, "El nombre no puede exceder 50 caracteres")
+      .required("El nombre es requerido")
+      .test('not-empty', 'El nombre no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+    description: Yup.string()
+      .trim("No se permiten solo espacios en la descripción")
+      .max(200, "La descripción no puede exceder 200 caracteres")
+      .required("La descripción es requerida")
+      .test('not-empty', 'La descripción no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
     color: Yup.string().required("El color es requerido"),
   })
+
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {

@@ -51,6 +51,7 @@ const Reports = () => {
       publicationId: r.publication_id,
       reason: r.reason,
       createdAt: r.created_at,
+      description: r.description || "",
     }))
     setReports(mapped)
     setLoading(false)
@@ -94,7 +95,6 @@ const Reports = () => {
         </nav>
       </div>
 
-      {/* Lista de Reportes */}
       <div className="card">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -117,6 +117,8 @@ const Reports = () => {
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium text-gray-900 truncate">{report.objectName}</h4>
                     <p className="text-sm text-gray-500">Reportado por: {report.user} • {report.date}</p>
+                    <p className="text-sm text-gray-500">Razón: {report.description}</p>
+
                   </div>
                   <div className="flex items-center space-x-4">
                     <span className={getStatusPill(report.status)}>{report.status}</span>
@@ -126,6 +128,7 @@ const Reports = () => {
                         publicationId: report.publicationId,
                         reason: report.reason,
                         createdAt: report.createdAt,
+                        description_report: report.description,
                       }}
                       className="btn-secondary text-sm"
                     >

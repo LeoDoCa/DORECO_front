@@ -5,7 +5,8 @@ import { useApi } from "@hooks/useApi";
 import { useConfirmAction } from "@hooks/useConfirmAction";
 import Skeleton from "react-loading-skeleton";
 import { useInterests } from "@hooks/useInterests";
-import Swal from "sweetalert2";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import * as Yup from "yup";
 
 const ObjectDetails = () => {
   const { id } = useParams();
@@ -16,6 +17,27 @@ const ObjectDetails = () => {
   const [object, setObject] = useState(null);
   const [relatedObjects, setRelatedObjects] = useState([]);
   const [mainImageIndex, setMainImageIndex] = useState(0);
+
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState("");
+  const [contactSuccess, setContactSuccess] = useState("");
+  const [sendingContact, setSendingContact] = useState(false);
+  const ContactSchema = Yup.object().shape({
+    message: Yup.string()
+      .trim("No se permiten solo espacios en el mensaje")
+      .required("Debes escribir un mensaje.")
+      .test('not-empty', 'Debes escribir un mensaje.', value => value && value.trim() !== ''),
+  });
+
+  const ReportSchema = Yup.object().shape({
+    reason: Yup.string()
+      .required("Debes seleccionar un motivo."),
+    description: Yup.string()
+      .trim("No se permiten solo espacios en la descripción")
+      .required("Debes escribir una descripción.")
+      .test('not-empty', 'Debes escribir una descripción.', value => value && value.trim() !== ''),
+  });
 
   const {
     addToInterests,
@@ -43,20 +65,19 @@ const ObjectDetails = () => {
         description: obj.description,
         category: obj.category_name,
         status: obj.status === "available" ? "Disponible" : obj.status,
-        condition: obj.condition =="new" ? "Nuevo" : obj.condition == "like_new" ? "Como nuevo"  : obj.condition == "good" ? "En buen estado" : obj.condition == "fair" ? "En estado regular" : obj.condition == "poor" ? "En mal estado" : "Desconocido",
+        condition: obj.condition == "new" ? "Nuevo" : obj.condition == "like_new" ? "Como nuevo" : obj.condition == "good" ? "En buen estado" : obj.condition == "fair" ? "En estado regular" : obj.condition == "poor" ? "En mal estado" : "Desconocido",
         duracion: obj.duration,
         price: obj.price,
         images,
         publication_type: obj.publication_type === "donation"
           ? "Donar"
           : obj.publication_type === "sale"
-          ? "Vender"
-          : "Prestar",
+            ? "Vender"
+            : "Prestar",
         publication_date: obj.created_at,
         owner: {
           name: obj.owner_name,
-          avatar: obj.owner_photo,
-          username: obj.owner_name,
+          avatar: obj.owner_photo
 
         },
         keywords: obj.keywords,
@@ -72,7 +93,6 @@ const ObjectDetails = () => {
     }, 1200);
   };
 
-  // Nueva función usando useInterests
   const handleToggleFavorite = async () => {
     if (!object) return;
     let updatedFavorite = false;
@@ -89,128 +109,15 @@ const ObjectDetails = () => {
     }));
   };
 
-  const handleContactOwner = async () => {
-  if (user && object && object.owner && user.username === object.owner.username) {
-    showError("No puedes enviarte mensajes a ti mismo");
-    return;
-  }
+  const handleContactOwner = () => {
+    setShowContactModal(true);
+    setContactSuccess("");
+  };
 
-  const { value: message, isConfirmed } = await Swal.fire({
-    title: "Contactar con el propietario",
-    text: "Escribe el mensaje que deseas enviar al propietario:",
-    input: "textarea",
-    inputPlaceholder: "¡Hola! ¿Aún sigue disponible?",
-    showCancelButton: true,
-    confirmButtonText: "Enviar mensaje",
-    cancelButtonText: "Cancelar",
-    icon: "question",
-    customClass: {
-      popup: "rounded-2xl",
-      confirmButton: "btn-primary",
-      cancelButton: "btn-secondary",
-      input: "border rounded p-2",
-    },
-    inputValidator: (value) => {
-      if (!value || !value.trim()) {
-        return "El mensaje no puede estar vacío.";
-      }
-      if (value.trim().length < 10) {
-        return "El mensaje debe tener al menos 10 caracteres.";
-      }
-      return null;
-    },
-    buttonsStyling: false,
-  });
 
-  if (isConfirmed && message) {
-    try {
-      const response = await post(`/api/publications/${object.id}/send-message/`, {
-        message: message.trim()
-      });
-      
-      if (response && response.success) {
-        showSuccess("Mensaje enviado exitosamente");
-      } else {
-        showError("No se pudo enviar el mensaje. Intenta nuevamente.");
-      }
-    } catch (error) {
-      if (error.response && error.response.data) {
-        const errorData = error.response.data;
-        
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            showError(errorData.message[0]);
-          } else {
-            showError(errorData.message);
-          }
-        } else if (errorData.error) {
-          showError(errorData.error);
-        } else {
-          showError("Error al enviar el mensaje. Intenta nuevamente.");
-        }
-      } else {
-        showError("Error de conexión. Verifica tu internet e intenta nuevamente.");
-      }
-    }
-  }
-};
-
-  const handleReportClick = async () => {
-    const { value: formValues, isConfirmed } = await Swal.fire({
-      title: "Reportar publicación",
-      html:
-        '<select id="swal-input-reason" class="swal2-input">' +
-        '<option value="inappropriate">Contenido inapropiado</option>' +
-        '<option value="spam">Spam o publicidad</option>' +
-        '<option value="scam">Estafa o fraude</option>' +
-        '<option value="other">Otro</option>' +
-        '</select>' +
-        '<textarea id="swal-input-description" class="swal2-textarea" placeholder="Describe el motivo"></textarea>',
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: "Reportar",
-      cancelButtonText: "Cancelar",
-      icon: "warning",
-      preConfirm: () => {
-        const reason = document.getElementById('swal-input-reason').value;
-        const description = document.getElementById('swal-input-description').value;
-        if (!description) {
-          Swal.showValidationMessage('Debes escribir una descripción.');
-        }
-        return { reason, description };
-      },
-      customClass: {
-        popup: "rounded-2xl",
-        confirmButton: "btn-primary",
-        cancelButton: "btn-secondary",
-        input: "border rounded p-2",
-      },
-      buttonsStyling: false,
-    });
-
-    if (isConfirmed && formValues) {
-      const confirmed = await confirmAction({
-        title: "¿Estás seguro que deseas reportar esta publicación?",
-        text: `Motivo: ${formValues.reason}\n${formValues.description}`,
-        confirmButtonText: "Sí, reportar",
-        cancelButtonText: "Cancelar",
-        icon: "question",
-      });
-      if (confirmed) {
-        const response = await post("/api/reports/", {
-          publication: object.id,
-          reason: formValues.reason,
-          description: formValues.description,
-        });
-        if (response && response.success) {
-          showSuccess("Reporte enviado correctamente");
-        } else {
-          showError("No se pudo enviar el reporte");
-        }
-      } else {
-        showError("Reporte cancelado");
-      }
-    }
+  const handleReportClick = () => {
+    setShowReportModal(true);
+    setReportSuccess("");
   };
 
   const getPublicationColor = (type) => {
@@ -225,6 +132,50 @@ const ObjectDetails = () => {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  if (sendingContact) {
+    return (
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-60">
+        <div className="flex flex-col items-center bg-white rounded-xl py-8 px-8 shadow-lg">
+          <svg className="animate-spin h-8 w-8 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <div className="text-blue-800 text-lg font-semibold">Enviando mensaje...</div>
+          <div className="mt-3 text-gray-600 text-center text-sm max-w-xs">Por favor espera, tu mensaje está siendo enviado. Esto puede tardar algunos segundos.</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Ajuste: showContactModal solo cambia a true al dar click, y se cierra SOLO al enviar el form (no al cargar).
+  // NO mostrar skeleton nunca cuando está abierto el modal ni enviando.
+
+  if (!sendingContact && !showContactModal && (loading || !object)) {
+    return (
+      <div className="space-y-6">
+        <Skeleton height={20} width={300} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <Skeleton height={400} />
+            <div className="grid grid-cols-3 gap-2">
+              <Skeleton height={100} />
+              <Skeleton height={100} />
+              <Skeleton height={100} />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Skeleton height={32} width="80%" />
+            <Skeleton height={24} width={100} />
+            <Skeleton height={60} />
+            <Skeleton height={200} />
+            <Skeleton height={50} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   if (loading || !object) {
     return (
@@ -251,8 +202,10 @@ const ObjectDetails = () => {
     );
   }
 
+
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
       <nav className="flex" aria-label="Breadcrumb">
         <ol className="flex items-center space-x-4">
           <li>
@@ -280,7 +233,7 @@ const ObjectDetails = () => {
           </li>
         </ol>
       </nav>
-
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <div className="aspect-w-1 aspect-h-1">
@@ -300,8 +253,8 @@ const ObjectDetails = () => {
                   src={image || "/placeholder.svg"}
                   alt={`${object.name} - imagen ${index + 1}`}
                   className={`w-full h-24 object-cover rounded-lg bg-gray-100 cursor-pointer hover:opacity-75 border-2 ${mainImageIndex === index
-                      ? "border-blue-500"
-                      : "border-transparent"
+                    ? "border-blue-500"
+                    : "border-transparent"
                     }`}
                   onClick={() => setMainImageIndex(index)}
                 />
@@ -401,7 +354,7 @@ const ObjectDetails = () => {
               </p>
             )}
             {object.publication_type === "Prestar" && object.duracion && (
-               <p className="text-lg font-semibold text-[#28344F]">
+              <p className="text-lg font-semibold text-[#28344F]">
                 Días de préstamo: {object.duracion} días
               </p>
             )}
@@ -424,7 +377,6 @@ const ObjectDetails = () => {
               </span>
             </div>
           </div>
-
 
           {object.status === "Disponible" && (
             <div className="pt-6 border-t border-gray-200">
@@ -484,8 +436,130 @@ const ObjectDetails = () => {
           )}
         </div>
       </div>
+
+      {showContactModal && (
+        <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex items-center justify-center bg-white bg-opacity-40">
+          <div className="bg-white rounded-xl shadow p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-2">Contactar con el propietario</h3>
+            <Formik
+              initialValues={{ message: "" }}
+              validationSchema={ContactSchema}
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                setShowContactModal(false);
+                setContactSuccess("");
+                setSendingContact(true);
+                const response = await post(`/api/publications/${object.id}/send-message/`, {
+                  message: values.message
+                });
+                setSendingContact(false);
+                if (response && response.success) {
+                  setContactSuccess("Solicitud de contacto enviada correctamente");
+                  resetForm();
+                  await showSuccess("Solicitud de contacto enviada correctamente");
+                } else {
+                  setContactSuccess("");
+                  await showError("No se pudo enviar el mensaje. Intenta nuevamente.");
+                }
+                setSubmitting(false);
+              }}
+            >
+              {({ isSubmitting }) => (
+                <Form className="space-y-3">
+                  <div>
+                    <label className="block text-sm mb-1">Mensaje</label>
+                    <Field as="textarea" name="message" rows={3} className="w-full border rounded-lg px-3 py-2" placeholder="Escribe tu mensaje..." />
+                    <ErrorMessage name="message" component="div" className="text-xs text-red-600 mt-1" />
+                  </div>
+                  {contactSuccess && <div className="text-green-600 text-sm">{contactSuccess}</div>}
+                  <div className="flex gap-2 mt-2">
+                    <button type="submit" className="btn-primary flex-1" disabled={isSubmitting}>Enviar mensaje</button>
+                    <button type="button" className="btn-secondary flex-1" onClick={() => setShowContactModal(false)}>Cancelar</button>
+                  </div>
+                </Form>
+              )}
+            </Formik>
+          </div>
+        </div>
+      )}
+
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-40">
+          <div className="bg-white rounded-xl shadow p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-2">Reportar publicación</h3>
+            <Formik
+              initialValues={{ reason: "inappropriate", description: "" }}
+              validationSchema={ReportSchema}
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                setShowReportModal(false);
+                const confirmed = await confirmAction({
+                  title: "¿Estás seguro que deseas reportar esta publicación?",
+                  text: `Motivo: ${values.reason}\n${values.description}`,
+                  confirmButtonText: "Sí, reportar",
+                  cancelButtonText: "Cancelar",
+                  icon: "question",
+                });
+                if (confirmed) {
+                  const response = await post("/api/reports/", {
+                    publication: object.id,
+                    reason: values.reason,
+                    description: values.description,
+                  });
+                  if (response && response.success) {
+                    setReportSuccess("Reporte enviado correctamente");
+                    resetForm();
+                    await showSuccess("Reporte enviado correctamente");
+                  } else {
+                    setReportSuccess("");
+                    await showError("No se pudo enviar el reporte");
+                  }
+                }
+                setSubmitting(false);
+              }}
+            >
+            
+              {({ isSubmitting }) => (
+                <Form className="space-y-3">
+                  <div>
+                    <label className="block text-sm mb-1">Motivo</label>
+                    <Field as="select" name="reason" className="w-full border rounded-lg px-3 py-2">
+                      <option value="inappropriate">Contenido inapropiado</option>
+                      <option value="spam">Spam o publicidad</option>
+                      <option value="fake">Estafa o fraude</option>
+                      <option value="other">Otro</option>
+                    </Field>
+                    <ErrorMessage name="reason" component="div" className="text-xs text-red-600 mt-1" />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Descripción</label>
+                    <Field as="textarea" name="description" rows={3} className="w-full border rounded-lg px-3 py-2" placeholder="Describe el motivo..." />
+                    <ErrorMessage name="description" component="div" className="text-xs text-red-600 mt-1" />
+                  </div>
+                  {reportSuccess && <div className="text-green-600 text-sm">{reportSuccess}</div>}
+                  <div className="flex gap-2 mt-2">
+                    <button type="submit" className="btn-primary flex-1" disabled={isSubmitting}>Reportar</button>
+                    <button type="button" className="btn-secondary flex-1" onClick={() => setShowReportModal(false)}>Cancelar</button>
+                  </div>
+                </Form>
+              )}
+            </Formik>
+          </div>
+        </div>
+      )}
+
+      {sendingContact && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-60">
+          <div className="flex flex-col items-center bg-white rounded-xl py-8 px-8 shadow-lg">
+            <svg className="animate-spin h-8 w-8 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <div className="text-blue-800 text-lg font-semibold">Enviando mensaje...</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default ObjectDetails;
+

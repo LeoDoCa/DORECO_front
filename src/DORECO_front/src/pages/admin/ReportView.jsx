@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
 import Skeleton from "react-loading-skeleton"
@@ -30,12 +28,10 @@ const ReportView = () => {
   const [publication, setPublication] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
 
-  // Recibe datos de navegación si existen
   const navState = location.state || {}
 
   useEffect(() => {
     loadReportAndPublication()
-    // eslint-disable-next-line
   }, [id])
 
   const loadReportAndPublication = async () => {
@@ -43,6 +39,7 @@ const ReportView = () => {
     let reportData = null
     let publicationId = navState.publicationId
     let reason = navState.reason
+    let description_report = navState.description_report || ""
     let createdAt = navState.createdAt
     if (!publicationId || !reason || !createdAt) {
       const res = await getSilence(`api/reports/${id}/`)
@@ -64,6 +61,7 @@ const ReportView = () => {
       reason: reason || navState.reason,
       createdAt: createdAt || navState.createdAt,
       status: reportData?.status || navState.status,
+      description: description_report,
     })
     setLoading(false)
   }
@@ -159,9 +157,7 @@ const ReportView = () => {
         </button>
         <h1 className="text-2xl font-bold text-gray-900">Detalle del Reporte #{report.id}</h1>
       </div>
-      {/* Layout de dos columnas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna Izquierda: Información del Reporte */}
         <div className="lg:col-span-2">
           <div className="card">
             <div className="px-4 py-5 sm:p-6">
@@ -171,9 +167,9 @@ const ReportView = () => {
             <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
               <dl className="divide-y divide-gray-200">
                 <InfoField label="Razón del Reporte" value={report.reason} />
+                <InfoField label="Descripción del Reporte" value={report.description || "-"} />
                 <InfoField label="Descripción del Objeto" value={publication?.description || "-"} />
                 <InfoField label="Categoría" value={publication?.category_name || "-"} />
-                <InfoField label="Estado del Objeto" value={CONDITION_MAP[publication?.condition] || "-"} isPill />
                 <InfoField label="Tipo de Publicación" value={TYPE_MAP[publication?.publication_type] || "-"} isPill />
                 {publication && publication.price !== null && (
                   <InfoField label="Precio" value={`${publication.price} MXN`} />
@@ -204,7 +200,6 @@ const ReportView = () => {
             </div>
           </div>
         </div>
-        {/* Columna Derecha: Imágenes */}
         <div className="lg:col-span-1">
           <div className="card">
             <div className="px-4 py-5 sm:p-6">

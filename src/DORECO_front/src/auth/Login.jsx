@@ -9,10 +9,24 @@ import Logo from "./../assets/logo.png"
 
 
 const loginSchema = Yup.object().shape({
-  email: Yup.string().email("Ingresa un email válido").required("El email es requerido"),
+  email: Yup.string()
+    .trim("No se permiten espacios en blanco")
+    .email("Ingresa un email válido")
+    .required("El email es requerido")
+    .test(
+      'not-empty',
+      'El email no puede estar vacío o solo contener espacios',
+      (value) => value && value.trim() !== ''
+    ),
   password: Yup.string()
+    .trim("No se permiten espacios en blanco")
     .min(6, "La contraseña debe tener al menos 6 caracteres")
-    .required("La contraseña es requerida"),
+    .required("La contraseña es requerida")
+    .test(
+      'not-empty',
+      'La contraseña no puede estar vacía o solo contener espacios',
+      (value) => value && value.trim() !== ''
+    ),
 })
 
 const Login = () => {

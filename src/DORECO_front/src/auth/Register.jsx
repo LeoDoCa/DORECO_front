@@ -9,9 +9,11 @@ import Logo from "./../assets/logo.png"
 
 const registerSchema = Yup.object().shape({
     name: Yup.string()
+        .trim("No se permiten solo espacios en nombre")
         .min(3, "El nombre debe tener al menos 3 caracteres")
         .max(50, "El nombre no puede exceder 50 caracteres")
-        .required("El nombre es requerido"),
+        .required("El nombre es requerido")
+        .test('not-empty', 'El nombre no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
     surnames: Yup.string()
         .min(3, "El apellido debe tener al menos 3 caracteres")
         .max(50, "El apellido no puede exceder 50 caracteres")
