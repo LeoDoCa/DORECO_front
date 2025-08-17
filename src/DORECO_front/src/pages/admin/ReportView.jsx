@@ -76,19 +76,27 @@ const ReportView = () => {
         condition: publication.condition,
         publication_type: publication.publication_type,
         keywords: publication.keywords,
-        price: publication.price,
-        image1: publication.image1,
-        image2: publication.image2,
-        image3: publication.image3,
         is_active: false,
+      };
+      if (publication.publication_type === "loan") {
+        pubBody.price = null;
+        if ("duration" in publication) pubBody.duration = publication.duration;
+      } else if (publication.publication_type === "sale") {
+        pubBody.price = publication.price;
+        if ("duration" in publication) pubBody.duration = null;
+      } else if (publication.publication_type === "donation") {
+        pubBody.price = null;
+        if ("duration" in publication) pubBody.duration = null;
       }
       const putRes = await put(`api/publications/${publication.id}/`, pubBody)
+
       if (!putRes.success) {
         setActionLoading(false)
         alert("Error al desactivar la publicación. No se pudo aprobar el reporte.")
         return
       }
     }
+
     const body =
       status === "resolved"
         ? {
