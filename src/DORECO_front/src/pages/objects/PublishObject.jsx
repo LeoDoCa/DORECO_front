@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 
-// Estados globales para imágenes (Files y urls)
-let existingImages = []; // Guardará solo URLs
-let newImages = [];      // Guardará archivos File
+let existingImages = []; 
+let newImages = [];     
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
@@ -43,7 +42,6 @@ const PublishObject = () => {
     { label: "Malo", value: "poor" },
   ];
 
-  // Validación de imágenes: en edición, si ya hay imágenes previas, no es obligatorio subir nuevas
   const validationSchema = Yup.object().shape({
     name: Yup.string()
       .trim("No se permiten solo espacios en el nombre")
@@ -111,18 +109,15 @@ const PublishObject = () => {
     }),
   });
 
-  // Cargar datos de publicación si es edición
   useEffect(() => {
     const fetchPublication = async () => {
       if (!editId) return;
       setLoadingInitial(true);
       setIsEdit(true);
       try {
-        // get se toma del scope, pero no se pone como dependencia para evitar bucles
         const res = await get(`/api/publications/${editId}/`);
         if (res.success) {
           const obj = res.data.publication_data || res.data;
-          // Previews de imágenes
           const previews = [obj.image1, obj.image2, obj.image3].filter(Boolean).map(img => img.startsWith("http") ? img : `http://localhost:8000${img}`);
           setInitialValues({
             name: obj.title || "",
@@ -132,7 +127,7 @@ const PublishObject = () => {
             otherCategoryDescription: "",
             condition: obj.condition || "",
             tags: obj.keywords || "",
-            images: previews, // Ahora las imágenes precargadas van en el array images
+            images: previews, 
             publication_type:
               obj.publication_type === "donation"
                 ? "Donar"
@@ -151,20 +146,14 @@ const PublishObject = () => {
       }
     };
     fetchPublication();
-    // Solo depende de editId para evitar bucles infinitos
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [editId]);
 
-  // Modificado: separar nuevas imágenes (Files) y actualizar previews
   const handleImageChange = (event, setFieldValue, currentImages) => {
     const files = Array.from(event.target.files);
-    // Asegura que images siempre tenga exactamente 3 slots
     let images = currentImages ? [...currentImages] : [];
-    // Ajusta inicialmente a 3 slots para facilitar fills, sin cortar images válidas
     while (images.length < 3) images.push(null);
-    // Inserta archivos en los huecos
     let fileIdx = 0;
-    // Busca el primer slot vacío para cada file
     for (let f of files) {
       let inserted = false;
       for (let i = 0; i < 3; ++i) {
@@ -178,7 +167,7 @@ const PublishObject = () => {
         images.push(f);
       }
     }
-    images = images.slice(0, 3); // Asegura nunca más de 3
+    images = images.slice(0, 3);
     setFieldValue('images', images);
     setImagePreview(images.map(img => !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))));
   };
@@ -201,7 +190,6 @@ const PublishObject = () => {
     try {
       let categoryId = values.category;
 
-      // Si es "otros", primero crea la categoría sugerida
       if (values.category === "otros") {
         const categoryPayload = {
           name: values.otherCategory,
@@ -235,12 +223,10 @@ const PublishObject = () => {
         categoryId = categoryData.id;
       }
 
-      // Limpiar atributos según el tipo de publicación
       let pubType = "donation";
       if (values.publication_type === "Vender") pubType = "sale";
       else if (values.publication_type === "Prestar") pubType = "loan";
 
-      // Ajustar valores según reglas de negocio
       let price = values.price;
       let loan_days = values.loan_days;
       if (pubType === "donation") {
@@ -252,7 +238,6 @@ const PublishObject = () => {
         price = null;
       }
 
-      // Crear o actualizar publicación
       const formData = new FormData();
       formData.append("title", values.name);
       formData.append("description", values.description);
@@ -267,16 +252,14 @@ const PublishObject = () => {
         formData.append("duration", loan_days);
       }
 
-      // ARMADO DE ENVÍO: image1, image2, image3 SIEMPRE en el orden visual presentado
       const allImages = [...values.images];
       for (let i = 0; i < 3; ++i) {
         const img = allImages[i];
         if (img instanceof File) {
           formData.append(`image${i + 1}`, img);
-        } else if (!img) { // null o undefined
+        } else if (!img) { 
           formData.append(`image${i + 1}`, '');
         }
-        // Si es string (URL), no se envía, backend la conserva
       }
 
       formData.append("is_active", true);
@@ -294,14 +277,24 @@ const PublishObject = () => {
       }
       navigate("/objects");
 
-      // Limpieza de imágenes globales tras acción
       newImages = [];
       existingImages = [];
     } catch (error) {
+      if (window.Swal) {
+        await window.Swal.fire({
+          icon: 'error',
+          title: 'No se pudo publicar/actualizar el objeto',
+          text: (error.response?.data?.detail || error.message || "Error inesperado. Intenta más tarde."),
+          confirmButtonText: 'Cerrar',
+        })
+      } else {
+        alert("Error publicando/actualizando objeto: " + (error.message || ""));
+      }
       console.error("Error publicando/actualizando objeto:", error);
     }
     setSubmitting(false);
   };
+
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -322,10 +315,8 @@ const PublishObject = () => {
     fetchCategories();
   }, []);
 
-  // Mantener sincronizado el estado global de imágenes existentes cuando se carga la publicación en edición
   useEffect(() => {
     if (isEdit && initialValues.images && initialValues.images.length > 0) {
-      // Asumimos que las existentes son URLs
       existingImages = initialValues.images.filter(img => typeof img === 'string');
       newImages = initialValues.images.filter(img => typeof img === 'object');
     }

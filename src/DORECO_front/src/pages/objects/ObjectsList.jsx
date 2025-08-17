@@ -86,10 +86,9 @@ const ObjectsList = () => {
     }
   };
 
-  // Nueva función para manejar favoritos usando useInterests
   const handleToggleFavorite = async (object, e) => {
-    e.stopPropagation(); // Evita propagación para que no navegue
-    e.preventDefault(); // Evita navegación del Link
+    e.stopPropagation(); 
+    e.preventDefault(); 
     let updatedFavorite = false;
     if (object.is_favorite) {
       const removed = await removeFromInterests(object.id);
@@ -107,7 +106,6 @@ const ObjectsList = () => {
     );
   };
 
-  // El botón de favorito ahora está fuera del Link principal
   const ObjectCard = ({ object }) => (
     <div className="card hover:shadow-medium transition-shadow duration-200 cursor-pointer group relative">
       <Link

@@ -92,7 +92,17 @@ const ReportView = () => {
 
       if (!putRes.success) {
         setActionLoading(false)
-        alert("Error al desactivar la publicación. No se pudo aprobar el reporte.")
+        if (window.Swal) {
+          await window.Swal.fire({
+            icon: 'error',
+            title: 'No se pudo aprobar el reporte',
+            text: 'Error al desactivar la publicación. No se pudo aprobar el reporte.',
+            confirmButtonText: 'Cerrar',
+          });
+        } else {
+          // fallback
+          alert("Error al desactivar la publicación. No se pudo aprobar el reporte.")
+        }
         return
       }
     }

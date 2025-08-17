@@ -41,13 +41,13 @@ const profileSchema = Yup.object().shape({
     .min(8, "La contraseña debe tener al menos 8 caracteres")
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "La contraseña debe contener al menos una mayúscula, una minúscula y un número")
     .test('password-empty', 'La contraseña no puede estar vacía o solo contener espacios', function(value) {
-      if (!value) return true; // Solo valida si se provee
+      if (!value) return true; 
       return value.trim() !== '';
     }),
   password_confirm: Yup.string()
     .oneOf([Yup.ref("password"), null], "Las contraseñas deben coincidir")
     .test('password-confirm-empty', 'La confirmación no puede estar vacía o solo contener espacios', function(value) {
-      if (!this.parent.password && !value) return true; // Solo valida si la password está presente
+      if (!this.parent.password && !value) return true; 
       return value && value.trim() !== '';
     }),
 });

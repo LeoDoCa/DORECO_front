@@ -7,7 +7,6 @@ import * as Yup from "yup"
 import Skeleton from "react-loading-skeleton"
 import { AuthManager } from "@config/context/auth-manager"
 
-// Paleta de colores para asignar aleatoriamente
 const COLORS = [
   "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#DC2626", "#059669", "#7C3AED", "#DB2777", "#F472B6"
 ]

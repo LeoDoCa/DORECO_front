@@ -148,8 +148,6 @@ const ObjectDetails = () => {
     );
   }
 
-  // Ajuste: showContactModal solo cambia a true al dar click, y se cierra SOLO al enviar el form (no al cargar).
-  // NO mostrar skeleton nunca cuando está abierto el modal ni enviando.
 
   if (!sendingContact && !showContactModal && (loading || !object)) {
     return (
@@ -233,7 +231,6 @@ const ObjectDetails = () => {
           </li>
         </ol>
       </nav>
-      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <div className="aspect-w-1 aspect-h-1">
@@ -458,8 +455,9 @@ const ObjectDetails = () => {
                   await showSuccess("Solicitud de contacto enviada correctamente");
                 } else {
                   setContactSuccess("");
-                  await showError("No se pudo enviar el mensaje. Intenta nuevamente.");
+                  await showError(response.error || "No se pudo enviar el mensaje. Intenta nuevamente.");
                 }
+
                 setSubmitting(false);
               }}
             >
@@ -510,8 +508,9 @@ const ObjectDetails = () => {
                     await showSuccess("Reporte enviado correctamente");
                   } else {
                     setReportSuccess("");
-                    await showError("No se pudo enviar el reporte");
+                    await showError(response.error || "No se pudo enviar el reporte");
                   }
+
                 }
                 setSubmitting(false);
               }}
