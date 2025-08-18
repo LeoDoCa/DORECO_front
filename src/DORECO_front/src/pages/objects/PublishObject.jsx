@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-
 let existingImages = []
 let newImages = []
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -330,7 +329,6 @@ const PublishObject = () => {
     const imageFiles = files.filter(file => file.type.startsWith('image/'))
 
     if (imageFiles.length > 0) {
-      // Simular el evento de input file para reutilizar la lógica existente
       const fakeEvent = {
         target: {
           files: imageFiles,
@@ -768,15 +766,9 @@ const PublishObject = () => {
                               onClick={() => {
                                 let imgs = [...values.images]
                                 imgs[index] = null
-                                // Reorganizar las imágenes para eliminar huecos
-                                const filteredImages = imgs.filter(img => img !== null)
-                                // Completar con null hasta llegar a 3 elementos
-                                while (filteredImages.length < 3) {
-                                  filteredImages.push(null)
-                                }
-                                setFieldValue('images', filteredImages)
+                                setFieldValue('images', imgs)
                                 setImagePreview(
-                                  filteredImages.map(img =>
+                                  imgs.map(img =>
                                     !img
                                       ? ''
                                       : typeof img === 'string'
@@ -790,7 +782,6 @@ const PublishObject = () => {
                             </button>
                           </>
                         ) : (
-                          // Mostrar slot vacío SOLO en modo edición Y si hay menos de 3 imágenes
                           isEdit &&
                           values.images.filter(img => img).length < 3 && (
                             <div className="relative">
@@ -802,13 +793,7 @@ const PublishObject = () => {
                                 onChange={e => {
                                   if (e.target.files && e.target.files[0]) {
                                     let imgs = [...values.images]
-                                    // Encontrar el primer slot vacío en lugar de usar el índice fijo
-                                    const firstEmptyIndex = imgs.findIndex(img => !img)
-                                    if (firstEmptyIndex !== -1) {
-                                      imgs[firstEmptyIndex] = e.target.files[0]
-                                    } else if (imgs.length < 3) {
-                                      imgs.push(e.target.files[0])
-                                    }
+                                    imgs[index] = e.target.files[0]
                                     setFieldValue('images', imgs)
                                     setImagePreview(
                                       imgs.map(img =>
@@ -839,10 +824,8 @@ const PublishObject = () => {
                     ))}
                   </div>
 
-                  {/* Zona de subida mejorada - SOLO para creación nueva (publicación), NO para edición */}
                   {!isEdit && values.images.filter(img => img).length < 3 && (
                     <>
-                      {/* Input file oculto - ÚNICO */}
                       <input
                         id="images"
                         name="images"
@@ -866,7 +849,6 @@ const PublishObject = () => {
                       >
                         <div className="flex justify-center px-6 pt-5 pb-6">
                           <div className="space-y-2 text-center">
-                            {/* Icono que cambia según el estado */}
                             {isDragOver ? (
                               <svg
                                 className="mx-auto h-12 w-12 text-blue-400 animate-bounce"
@@ -897,7 +879,6 @@ const PublishObject = () => {
                               </svg>
                             )}
 
-                            {/* Texto que cambia según el estado */}
                             <div className="text-sm text-gray-600">
                               {isDragOver ? (
                                 <p className="text-blue-600 font-medium">
@@ -913,12 +894,10 @@ const PublishObject = () => {
                               )}
                             </div>
 
-                            {/* Información adicional */}
                             <p className="text-xs text-gray-500">
                               PNG, JPG, GIF hasta 10MB cada una
                             </p>
 
-                            {/* Contador de imágenes */}
                             <p className="text-xs text-gray-400">
                               {values.images.filter(img => img).length} de 3 imágenes
                             </p>
@@ -928,7 +907,7 @@ const PublishObject = () => {
                     </>
                   )}
 
-                  {/* Mensaje cuando se alcanza el máximo */}
+
                   {values.images.filter(img => img).length >= 3 && (
                     <p className="text-sm text-amber-600 mt-2 flex items-center">
                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
