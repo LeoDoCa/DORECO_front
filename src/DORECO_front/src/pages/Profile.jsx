@@ -1,150 +1,209 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useApi } from "@hooks/useApi";
-import { AuthManager } from "@config/context/auth-manager";
-import { Formik, Form, Field, ErrorMessage } from "formik";
-import * as Yup from "yup";
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useApi } from '@hooks/useApi'
+import { AuthManager } from '@config/context/auth-manager'
+import { useAuth } from '@config/context/auth-context'
+import { Formik, Form, Field, ErrorMessage } from 'formik'
+import * as Yup from 'yup'
 
-const API_PROFILE = "/auth/profile/";
-const API_UPDATE = "/auth/update-profile/";
+const API_PROFILE = '/auth/profile/'
+const API_UPDATE = '/auth/update-profile/'
 
 const profileSchema = Yup.object().shape({
   name: Yup.string()
-    .trim("No se permiten solo espacios en el nombre")
-    .min(2, "El nombre debe tener al menos 2 caracteres")
-    .max(50, "El nombre no puede exceder 50 caracteres")
-    .required("El nombre es requerido")
-    .test('not-empty', 'El nombre no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+    .trim('No se permiten solo espacios en el nombre')
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres')
+    .required('El nombre es requerido')
+    .test(
+      'not-empty',
+      'El nombre no puede estar vacío o solo contener espacios',
+      value => value && value.trim() !== ''
+    ),
   surnames: Yup.string()
-    .trim("No se permiten solo espacios en los apellidos")
-    .min(2, "Los apellidos deben tener al menos 2 caracteres")
-    .max(50, "Los apellidos no pueden exceder 50 caracteres")
-    .required("Los apellidos son requeridos")
-    .test('not-empty', 'Los apellidos no pueden estar vacíos o solo contener espacios', value => value && value.trim() !== ''),
+    .trim('No se permiten solo espacios en los apellidos')
+    .min(2, 'Los apellidos deben tener al menos 2 caracteres')
+    .max(50, 'Los apellidos no pueden exceder 50 caracteres')
+    .required('Los apellidos son requeridos')
+    .test(
+      'not-empty',
+      'Los apellidos no pueden estar vacíos o solo contener espacios',
+      value => value && value.trim() !== ''
+    ),
   email: Yup.string()
-    .trim("No se permiten solo espacios en el email")
-    .email("Debes ingresar un email válido")
-    .required("El email es requerido")
-    .test('not-empty', 'El email no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+    .trim('No se permiten solo espacios en el email')
+    .email('Debes ingresar un email válido')
+    .required('El email es requerido')
+    .test(
+      'not-empty',
+      'El email no puede estar vacío o solo contener espacios',
+      value => value && value.trim() !== ''
+    ),
   username: Yup.string()
-    .trim("No se permiten solo espacios en el usuario")
-    .min(2, "El usuario debe tener al menos 2 caracteres")
-    .max(20, "El usuario no puede exceder 20 caracteres")
-    .required("El usuario es requerido")
-    .test('not-empty', 'El usuario no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+    .trim('No se permiten solo espacios en el usuario')
+    .min(2, 'El usuario debe tener al menos 2 caracteres')
+    .max(20, 'El usuario no puede exceder 20 caracteres')
+    .required('El usuario es requerido')
+    .test(
+      'not-empty',
+      'El usuario no puede estar vacío o solo contener espacios',
+      value => value && value.trim() !== ''
+    ),
   phone_number: Yup.string()
-    .trim("No se permiten solo espacios en el teléfono")
-    .matches(/^\d{10}$/, "El teléfono debe tener 10 dígitos")
+    .trim('No se permiten solo espacios en el teléfono')
+    .matches(/^\d{10}$/, 'El teléfono debe tener 10 dígitos')
     .nullable(),
   password: Yup.string()
-    .trim("No se permiten solo espacios en la contraseña")
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "La contraseña debe contener al menos una mayúscula, una minúscula y un número")
-    .test('password-empty', 'La contraseña no puede estar vacía o solo contener espacios', function(value) {
-      if (!value) return true; 
-      return value.trim() !== '';
-    }),
+    .trim('No se permiten solo espacios en la contraseña')
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .matches(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'La contraseña debe contener al menos una mayúscula, una minúscula y un número'
+    )
+    .test(
+      'password-empty',
+      'La contraseña no puede estar vacía o solo contener espacios',
+      function (value) {
+        if (!value) return true
+        return value.trim() !== ''
+      }
+    ),
   password_confirm: Yup.string()
-    .oneOf([Yup.ref("password"), null], "Las contraseñas deben coincidir")
-    .test('password-confirm-empty', 'La confirmación no puede estar vacía o solo contener espacios', function(value) {
-      if (!this.parent.password && !value) return true; 
-      return value && value.trim() !== '';
-    }),
-});
+    .oneOf([Yup.ref('password'), null], 'Las contraseñas deben coincidir')
+    .test(
+      'password-confirm-empty',
+      'La confirmación no puede estar vacía o solo contener espacios',
+      function (value) {
+        if (!this.parent.password && !value) return true
+        return value && value.trim() !== ''
+      }
+    ),
+})
 
 const Profile = () => {
-  const navigate = useNavigate();
-  const { getSilence, put, loading: apiLoading, error: apiError } = useApi();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState("");
-  const [error, setError] = useState("");
+  const navigate = useNavigate()
+  const { getSilence, put, loading: apiLoading, error: apiError } = useApi()
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [editMode, setEditMode] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState('')
+  const [error, setError] = useState('')
+  const { updateUser } = useAuth()
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const res = await getSilence(API_PROFILE);
+      const res = await getSilence(API_PROFILE)
       if (res.success) {
-        const data = res.data;
-        setUser(data);
-        setPhotoPreview(data.photo ? (data.photo.startsWith("http") ? data.photo : `http://localhost:8000${data.photo}`) : "/placeholder.svg");
+        const data = res.data
+        setUser(data)
+        setPhotoPreview(
+          data.photo
+            ? data.photo.startsWith('http')
+              ? data.photo
+              : `http://localhost:8000${data.photo}`
+            : '/placeholder.svg'
+        )
       } else {
-        setError("No se pudo cargar el perfil");
+        setError('No se pudo cargar el perfil')
       }
-      setLoading(false);
-    };
-    fetchProfile();
-    fetchMyPublications();
-  }, []);
+      setLoading(false)
+    }
+    fetchProfile()
+    fetchMyPublications()
+  }, [])
 
-  const handleCancel = (resetForm) => {
-    setEditMode(false);
+  const handleCancel = resetForm => {
+    setEditMode(false)
     if (user) {
       resetForm({
         values: {
-          name: user.name || "",
-          surnames: user.surnames || "",
-          email: user.email || "",
-          username: user.username || "",
-          phone_number: user.phone_number || "",
-          photo: user.photo || "",
-          password: "",
-          password_confirm: "",
-        }
-      });
-      setPhotoPreview(user.photo ? (user.photo.startsWith("http") ? user.photo : `http://localhost:8000${user.photo}`) : "/placeholder.svg");
-      setError("");
+          name: user.name || '',
+          surnames: user.surnames || '',
+          email: user.email || '',
+          username: user.username || '',
+          phone_number: user.phone_number || '',
+          photo: user.photo || '',
+          password: '',
+          password_confirm: '',
+        },
+      })
+      setPhotoPreview(
+        user.photo
+          ? user.photo.startsWith('http')
+            ? user.photo
+            : `http://localhost:8000${user.photo}`
+          : '/placeholder.svg'
+      )
+      setError('')
     }
-  };
+  }
 
   const handleSave = async (values, actions) => {
-    setError("");
-    const form = new FormData();
-    form.append("name", values.name);
-    form.append("surnames", values.surnames);
-    form.append("email", values.email);
-    form.append("username", values.username);
-    form.append("phone_number", values.phone_number || "");
+    setError('')
+    const form = new FormData()
+    form.append('name', values.name)
+    form.append('surnames', values.surnames)
+    form.append('email', values.email)
+    form.append('username', values.username)
+    form.append('phone_number', values.phone_number || '')
     if (values.photo && values.photo instanceof File) {
-      form.append("photo", values.photo);
+      form.append('photo', values.photo)
     }
     if (values.password) {
-      form.append("password", values.password);
-      form.append("password_confirm", values.password_confirm);
+      form.append('password', values.password)
+      form.append('password_confirm', values.password_confirm)
     }
-    const res = await put(API_UPDATE, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+    const res = await put(API_UPDATE, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+
     if (res.success) {
-      const updated = res.data;
-      setUser(updated);
-      setEditMode(false);
+      const updated = res.data
+      setUser(updated)
+      updateUser(updated)
+
+      window.dispatchEvent(
+        new CustomEvent('profile-updated', {
+          detail: updated,
+        })
+      )
+
+      setEditMode(false)
       actions.resetForm({
         values: {
-          name: updated.name || "",
-          surnames: updated.surnames || "",
-          email: updated.email || "",
-          username: updated.username || "",
-          phone_number: updated.phone_number || "",
-          photo: updated.photo || "",
-          password: "",
-          password_confirm: "",
-        }
-      });
-      setPhotoPreview(updated.photo ? (updated.photo.startsWith("http") ? updated.photo : `http://localhost:8000${updated.photo}`) : "/placeholder.svg");
+          name: updated.name || '',
+          surnames: updated.surnames || '',
+          email: updated.email || '',
+          username: updated.username || '',
+          phone_number: updated.phone_number || '',
+          photo: updated.photo || '',
+          password: '',
+          password_confirm: '',
+        },
+      })
+      setPhotoPreview(
+        updated.photo
+          ? updated.photo.startsWith('http')
+            ? updated.photo
+            : `http://localhost:8000${updated.photo}`
+          : '/placeholder.svg'
+      )
+
+      console.log('Perfil actualizado exitosamente:', updated)
     } else {
-      setError(res.error || "Error al actualizar perfil");
+      setError(res.error || 'Error al actualizar perfil')
     }
-    actions.setSubmitting(false);
-  };
+    actions.setSubmitting(false)
+  }
 
   // ... resto de publicaciones y QR code queda igual
-  const [posts, setPosts] = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [postsError, setPostsError] = useState("");
+  const [posts, setPosts] = useState([])
+  const [postsLoading, setPostsLoading] = useState(true)
+  const [postsError, setPostsError] = useState('')
 
   const fetchMyPublications = async () => {
-    setPostsLoading(true);
-    setPostsError("");
-    const res = await getSilence("/api/publications/my_publications/");
+    setPostsLoading(true)
+    setPostsError('')
+    const res = await getSilence('/api/publications/my_publications/')
     if (res.success) {
       const mapped = res.data.map(obj => ({
         id: obj.id,
@@ -152,100 +211,104 @@ const Profile = () => {
         description: obj.description,
         category: obj.category_name,
         condition: obj.condition,
-        publication_type: obj.publication_type === "donation"
-          ? "Donar"
-          : obj.publication_type === "sale"
-          ? "Vender"
-          : "Prestar",
-        price: obj.price || "0.00",
-        keywords: obj.keywords || "",
+        publication_type:
+          obj.publication_type === 'donation'
+            ? 'Donar'
+            : obj.publication_type === 'sale'
+              ? 'Vender'
+              : 'Prestar',
+        price: obj.price || '0.00',
+        keywords: obj.keywords || '',
         duration: obj.duration,
         status: obj.status,
         is_active: obj.is_active,
         owner: obj.owner,
-        images: [obj.image1, obj.image2, obj.image3].filter(Boolean)
-      }));
-      setPosts(mapped);
+        images: [obj.image1, obj.image2, obj.image3].filter(Boolean),
+      }))
+      setPosts(mapped)
     } else {
-      setPostsError("No se pudieron cargar las publicaciones");
+      setPostsError('No se pudieron cargar las publicaciones')
     }
-    setPostsLoading(false);
-  };
+    setPostsLoading(false)
+  }
 
   // QR code modal se mantiene igual ...
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [currentQRTitle, setCurrentQRTitle] = useState("");
-  const [currentPostId, setCurrentPostId] = useState(null);
-  const [qrImageUrl, setQrImageUrl] = useState("");
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrError, setQrError] = useState("");
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [currentQRTitle, setCurrentQRTitle] = useState('')
+  const [currentPostId, setCurrentPostId] = useState(null)
+  const [qrImageUrl, setQrImageUrl] = useState('')
+  const [qrLoading, setQrLoading] = useState(false)
+  const [qrError, setQrError] = useState('')
 
-  const openQRModal = async (post) => {
-    if (post.status !== "available") return;
+  const openQRModal = async post => {
+    if (post.status !== 'available') return
     if (qrImageUrl && qrImageUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(qrImageUrl);
+      URL.revokeObjectURL(qrImageUrl)
     }
-    setCurrentQRTitle(post.title);
-    setCurrentPostId(post.id);
-    setShowQRModal(true);
-    setQrLoading(true);
-    setQrError("");
-    setQrImageUrl("");
+    setCurrentQRTitle(post.title)
+    setCurrentPostId(post.id)
+    setShowQRModal(true)
+    setQrLoading(true)
+    setQrError('')
+    setQrImageUrl('')
     try {
-      const token = AuthManager.getToken();
-      const headers = {};
+      const token = AuthManager.getToken()
+      const headers = {}
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers['Authorization'] = `Bearer ${token}`
       }
-      const imageResponse = await fetch(`http://localhost:8000/api/publications/${post.id}/generate-qr/`, {
-        method: 'GET',
-        headers,
-      });
+      const imageResponse = await fetch(
+        `http://localhost:8000/api/publications/${post.id}/generate-qr/`,
+        {
+          method: 'GET',
+          headers,
+        }
+      )
       if (imageResponse.ok) {
-        const contentType = imageResponse.headers.get('content-type');
+        const contentType = imageResponse.headers.get('content-type')
         if (contentType && contentType.startsWith('image/')) {
-          const blob = await imageResponse.blob();
-          const imageUrl = URL.createObjectURL(blob);
-          setQrImageUrl(imageUrl);
+          const blob = await imageResponse.blob()
+          const imageUrl = URL.createObjectURL(blob)
+          setQrImageUrl(imageUrl)
         } else {
-          setQrError("El servidor no devolvió una imagen válida");
+          setQrError('El servidor no devolvió una imagen válida')
         }
       } else {
-        const errorText = await imageResponse.text();
-        setQrError(`Error ${imageResponse.status}: No se pudo generar el código QR`);
+        const errorText = await imageResponse.text()
+        setQrError(`Error ${imageResponse.status}: No se pudo generar el código QR`)
       }
     } catch (error) {
-      setQrError("Error de conexión al generar el código QR");
+      setQrError('Error de conexión al generar el código QR')
     } finally {
-      setQrLoading(false);
+      setQrLoading(false)
     }
-  };
+  }
 
   const downloadQR = () => {
-    if (!qrImageUrl) return;
-    const link = document.createElement('a');
-    link.href = qrImageUrl;
-    link.download = `QR_${currentQRTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${currentPostId}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    if (!qrImageUrl) return
+    const link = document.createElement('a')
+    link.href = qrImageUrl
+    link.download = `QR_${currentQRTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${currentPostId}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const closeQRModal = () => {
     if (qrImageUrl && qrImageUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(qrImageUrl);
+      URL.revokeObjectURL(qrImageUrl)
     }
-    setShowQRModal(false);
-    setCurrentQRTitle("");
-    setCurrentPostId(null);
-    setQrImageUrl("");
-    setQrError("");
-    setQrLoading(false);
-  };
+    setShowQRModal(false)
+    setCurrentQRTitle('')
+    setCurrentPostId(null)
+    setQrImageUrl('')
+    setQrError('')
+    setQrLoading(false)
+  }
 
-  if (loading) return <div className="p-8">Cargando...</div>;
-  if (error) return <div className="p-8 text-red-600">{error}</div>;
-  if (!user) return null;
+  if (loading) return <div className="p-8">Cargando...</div>
+  if (error) return <div className="p-8 text-red-600">{error}</div>
+  if (!user) return null
 
   return (
     <div>
@@ -259,14 +322,14 @@ const Profile = () => {
         {editMode ? (
           <Formik
             initialValues={{
-              name: user.name || "",
-              surnames: user.surnames || "",
-              email: user.email || "",
-              username: user.username || "",
-              phone_number: user.phone_number || "",
-              photo: user.photo || "",
-              password: "",
-              password_confirm: "",
+              name: user.name || '',
+              surnames: user.surnames || '',
+              email: user.email || '',
+              username: user.username || '',
+              phone_number: user.phone_number || '',
+              photo: user.photo || '',
+              password: '',
+              password_confirm: '',
             }}
             validationSchema={profileSchema}
             enableReinitialize={true}
@@ -280,20 +343,28 @@ const Profile = () => {
                     <Field
                       type="text"
                       name="name"
-                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.name && touched.name ? "border-red-500" : ""}`}
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.name && touched.name ? 'border-red-500' : ''}`}
                       placeholder="Nombre"
                     />
-                    <ErrorMessage name="name" component="div" className="form-error text-xs text-red-600" />
+                    <ErrorMessage
+                      name="name"
+                      component="div"
+                      className="form-error text-xs text-red-600"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">Apellidos</label>
                     <Field
                       type="text"
                       name="surnames"
-                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.surnames && touched.surnames ? "border-red-500" : ""}`}
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.surnames && touched.surnames ? 'border-red-500' : ''}`}
                       placeholder="Apellidos"
                     />
-                    <ErrorMessage name="surnames" component="div" className="form-error text-xs text-red-600" />
+                    <ErrorMessage
+                      name="surnames"
+                      component="div"
+                      className="form-error text-xs text-red-600"
+                    />
                   </div>
                 </div>
 
@@ -302,10 +373,14 @@ const Profile = () => {
                   <Field
                     type="email"
                     name="email"
-                    className={`w-full border rounded-lg px-3 py-1.5 ${errors.email && touched.email ? "border-red-500" : ""}`}
+                    className={`w-full border rounded-lg px-3 py-1.5 ${errors.email && touched.email ? 'border-red-500' : ''}`}
                     placeholder="Correo electrónico"
                   />
-                  <ErrorMessage name="email" component="div" className="form-error text-xs text-red-600" />
+                  <ErrorMessage
+                    name="email"
+                    component="div"
+                    className="form-error text-xs text-red-600"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -314,20 +389,28 @@ const Profile = () => {
                     <Field
                       type="text"
                       name="username"
-                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.username && touched.username ? "border-red-500" : ""}`}
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.username && touched.username ? 'border-red-500' : ''}`}
                       placeholder="Nombre de usuario"
                     />
-                    <ErrorMessage name="username" component="div" className="form-error text-xs text-red-600" />
+                    <ErrorMessage
+                      name="username"
+                      component="div"
+                      className="form-error text-xs text-red-600"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">Teléfono</label>
                     <Field
                       type="text"
                       name="phone_number"
-                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.phone_number && touched.phone_number ? "border-red-500" : ""}`}
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.phone_number && touched.phone_number ? 'border-red-500' : ''}`}
                       placeholder="Teléfono"
                     />
-                    <ErrorMessage name="phone_number" component="div" className="form-error text-xs text-red-600" />
+                    <ErrorMessage
+                      name="phone_number"
+                      component="div"
+                      className="form-error text-xs text-red-600"
+                    />
                   </div>
                 </div>
 
@@ -337,20 +420,28 @@ const Profile = () => {
                     <Field
                       type="password"
                       name="password"
-                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.password && touched.password ? "border-red-500" : ""}`}
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.password && touched.password ? 'border-red-500' : ''}`}
                       placeholder="Nueva contraseña"
                     />
-                    <ErrorMessage name="password" component="div" className="form-error text-xs text-red-600" />
+                    <ErrorMessage
+                      name="password"
+                      component="div"
+                      className="form-error text-xs text-red-600"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">Confirmar contraseña</label>
                     <Field
                       type="password"
                       name="password_confirm"
-                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.password_confirm && touched.password_confirm ? "border-red-500" : ""}`}
+                      className={`w-full border rounded-lg px-3 py-1.5 ${errors.password_confirm && touched.password_confirm ? 'border-red-500' : ''}`}
                       placeholder="Confirmar contraseña"
                     />
-                    <ErrorMessage name="password_confirm" component="div" className="form-error text-xs text-red-600" />
+                    <ErrorMessage
+                      name="password_confirm"
+                      component="div"
+                      className="form-error text-xs text-red-600"
+                    />
                   </div>
                 </div>
 
@@ -363,8 +454,8 @@ const Profile = () => {
                     className="w-full border rounded-lg px-3 py-1.5"
                     onChange={e => {
                       if (e.target.files && e.target.files[0]) {
-                        setFieldValue("photo", e.target.files[0]);
-                        setPhotoPreview(URL.createObjectURL(e.target.files[0]));
+                        setFieldValue('photo', e.target.files[0])
+                        setPhotoPreview(URL.createObjectURL(e.target.files[0]))
                       }
                     }}
                   />
@@ -376,7 +467,13 @@ const Profile = () => {
                     disabled={isSubmitting}
                     className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     Guardar
@@ -394,16 +491,30 @@ const Profile = () => {
           </Formik>
         ) : (
           <div className="w-full text-center text-sm space-y-1">
-            <p className="font-semibold">{user.name} {user.surnames}</p>
+            <p className="font-semibold">
+              {user.name} {user.surnames}
+            </p>
             <p className="text-gray-600">{user.email}</p>
             <p className="text-gray-600">Usuario: {user.username}</p>
-            <p className="text-gray-600">Teléfono: {user.phone_number || "-"}</p>
-            <p className="text-gray-500">Miembro desde {new Date(user.created_at).toLocaleDateString()}</p>
+            <p className="text-gray-600">Teléfono: {user.phone_number || '-'}</p>
+            <p className="text-gray-500">
+              Miembro desde {new Date(user.created_at).toLocaleDateString()}
+            </p>
             <button
               onClick={() => setEditMode(true)}
               className="mt-4 bg-blue-900 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 mx-auto"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-edit">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="feather feather-edit"
+              >
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
@@ -414,7 +525,7 @@ const Profile = () => {
       </div>
 
       {/* Publicaciones */}
-      {user?.role_name !== "ADMIN" && (
+      {user?.role_name !== 'ADMIN' && (
         <div>
           <h2 className="text-lg font-semibold mb-2 mt-4">Mis Publicaciones</h2>
           {postsLoading ? (
@@ -425,110 +536,145 @@ const Profile = () => {
             <div className="p-8 text-gray-500 text-center">No tienes publicaciones aún.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {posts.map((post) => {
-              const getPublicationColor = (type) => {
-                switch (type) {
-                  case "Donar":
-                    return "bg-green-100 text-green-800";
-                  case "Vender":
-                    return "bg-yellow-100 text-yellow-800";
-                  case "Prestar":
-                    return "bg-blue-100 text-blue-800";
-                  default:
-                    return "bg-gray-100 text-gray-800";
+              {posts.map(post => {
+                const getPublicationColor = type => {
+                  switch (type) {
+                    case 'Donar':
+                      return 'bg-green-100 text-green-800'
+                    case 'Vender':
+                      return 'bg-yellow-100 text-yellow-800'
+                    case 'Prestar':
+                      return 'bg-blue-100 text-blue-800'
+                    default:
+                      return 'bg-gray-100 text-gray-800'
+                  }
                 }
-              };
-              return (
-                <div
-                  key={post.id}
-                  className={`bg-white shadow rounded-lg overflow-hidden flex flex-col relative ${post.is_active === false ? 'opacity-60 pointer-events-none' : ''}`}
-                >
-                  {post.images && post.images.length > 0 && (
-                    <img
-                      src={post.images[0].startsWith("http") ? post.images[0] : `http://localhost:8000${post.images[0]}`}
-                      alt={post.title}
-                      className="w-full h-32 object-cover"
-                      onError={(e) => {
-                        e.target.src = "/placeholder.svg";
-                      }}
-                    />
-                  )}
-                  <div className="p-3 flex-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-base font-semibold text-gray-800 line-clamp-2">
-                        {post.title}
-                      </h3>
-                      <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${getPublicationColor(post.publication_type)}`}>
-                        {post.publication_type}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 line-clamp-3">
-                      {post.description}
-                    </p>
-                    <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
-                      <span className="px-2 py-0.5 bg-gray-100 rounded-full">
-                        Categoría {post.category}
-                      </span>
-                      <span>
-                        ${post.price}
-                      </span>
-                    </div>
-                    {post.is_active === false && (
-                      <div className="mt-2 text-xs text-red-700 font-semibold bg-red-100 rounded p-1 text-center">
-                        Esta publicación ha sido reportada y no está disponible
+                return (
+                  <div
+                    key={post.id}
+                    className={`bg-white shadow rounded-lg overflow-hidden flex flex-col relative ${post.is_active === false ? 'opacity-60 pointer-events-none' : ''}`}
+                  >
+                    {post.images && post.images.length > 0 && (
+                      <img
+                        src={
+                          post.images[0].startsWith('http')
+                            ? post.images[0]
+                            : `http://localhost:8000${post.images[0]}`
+                        }
+                        alt={post.title}
+                        className="w-full h-32 object-cover"
+                        onError={e => {
+                          e.target.src = '/placeholder.svg'
+                        }}
+                      />
+                    )}
+                    <div className="p-3 flex-1">
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="text-base font-semibold text-gray-800 line-clamp-2">
+                          {post.title}
+                        </h3>
+                        <span
+                          className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${getPublicationColor(post.publication_type)}`}
+                        >
+                          {post.publication_type}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                  <div className="border-t border-gray-100 p-2 flex space-x-1">
-                    <button
-                      onClick={() => navigate(`/publish?id=${post.id}`)}
-                      className={`flex-1 py-1 rounded-lg justify-center bg-gray-700 hover:bg-gray-800 text-white font-medium transition text-center flex items-center text-xs ${post.status === 'completed' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={post.status === 'completed'}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-edit">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => openQRModal(post)}
-                      className={`flex-1 py-1 rounded-lg justify-center text-white font-medium transition flex items-center gap-1 text-xs ${post.status === "available" && post.is_active !== false
-                        ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-blue-300 cursor-not-allowed"
-                        }`}
-                      disabled={post.status !== "available" || post.is_active === false}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="2" y="2" width="5" height="5" fill="white" />
-                        <rect x="13" y="2" width="5" height="5" fill="white" />
-                        <rect x="2" y="13" width="5" height="5" fill="white" />
-                        <rect x="9" y="9" width="2" height="2" fill="white" />
-                        <rect x="12" y="9" width="2" height="2" fill="white" />
-                        <rect x="15" y="9" width="2" height="2" fill="white" />
-                        <rect x="9" y="12" width="2" height="2" fill="white" />
-                        <rect x="12" y="12" width="2" height="2" fill="white" />
-                      </svg>
-                      QR
-                    </button>
-                    {post.status === "available" && post.is_active !== false ? (
+                      <p className="text-xs text-gray-600 line-clamp-3">{post.description}</p>
+                      <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
+                        <span className="px-2 py-0.5 bg-gray-100 rounded-full">
+                          Categoría {post.category}
+                        </span>
+                        <span>${post.price}</span>
+                      </div>
+                      {post.is_active === false && (
+                        <div className="mt-2 text-xs text-red-700 font-semibold bg-red-100 rounded p-1 text-center">
+                          Esta publicación ha sido reportada y no está disponible
+                        </div>
+                      )}
+                    </div>
+                    <div className="border-t border-gray-100 p-2 flex space-x-1">
                       <button
-                        onClick={() => handleDeliver(post.id)}
-                        className="flex-1 justify-center py-1 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition flex items-center gap-1 text-xs"
+                        onClick={() => navigate(`/publish?id=${post.id}`, { replace: true })}
+                        className={`flex-1 py-1 rounded-lg justify-center bg-gray-700 hover:bg-gray-800 text-white font-medium transition text-center flex items-center text-xs ${post.status === 'completed' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={post.status === 'completed'}
                       >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        Entregar
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="feather feather-edit"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Editar
                       </button>
-                    ) : (
-                      <span className="flex-1 flex items-center justify-center text-gray-600 font-medium text-xs">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" /></svg>
-                        Entregado
-                      </span>
-                    )}
+                      <button
+                        onClick={() => openQRModal(post)}
+                        className={`flex-1 py-1 rounded-lg justify-center text-white font-medium transition flex items-center gap-1 text-xs ${
+                          post.status === 'available' && post.is_active !== false
+                            ? 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-blue-300 cursor-not-allowed'
+                        }`}
+                        disabled={post.status !== 'available' || post.is_active === false}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <rect x="2" y="2" width="5" height="5" fill="white" />
+                          <rect x="13" y="2" width="5" height="5" fill="white" />
+                          <rect x="2" y="13" width="5" height="5" fill="white" />
+                          <rect x="9" y="9" width="2" height="2" fill="white" />
+                          <rect x="12" y="9" width="2" height="2" fill="white" />
+                          <rect x="15" y="9" width="2" height="2" fill="white" />
+                          <rect x="9" y="12" width="2" height="2" fill="white" />
+                          <rect x="12" y="12" width="2" height="2" fill="white" />
+                        </svg>
+                        QR
+                      </button>
+                      {post.status === 'available' && post.is_active !== false ? (
+                        <button
+                          onClick={() => handleDeliver(post.id)}
+                          className="flex-1 justify-center py-1 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition flex items-center gap-1 text-xs"
+                        >
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Entregar
+                        </button>
+                      ) : (
+                        <span className="flex-1 flex items-center justify-center text-gray-600 font-medium text-xs">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+                          </svg>
+                          Entregado
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                )
+              })}
             </div>
           )}
         </div>
@@ -547,15 +693,40 @@ const Profile = () => {
             <div className="text-center">
               {qrLoading ? (
                 <div className="mx-auto mb-3 w-56 h-56 flex items-center justify-center">
-                  <svg className="animate-spin h-12 w-12 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-12 w-12 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                 </div>
               ) : qrError ? (
                 <div className="mx-auto mb-3 w-56 h-56 flex items-center justify-center text-red-600">
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <svg
+                    className="w-12 h-12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
                   </svg>
                 </div>
               ) : qrImageUrl ? (
@@ -563,27 +734,35 @@ const Profile = () => {
                   src={qrImageUrl}
                   alt="Código QR"
                   className="mx-auto mb-3 w-56 h-56 object-contain"
-                  onError={(e) => {
-                    setQrError("Error al cargar el código QR");
+                  onError={e => {
+                    setQrError('Error al cargar el código QR')
                   }}
                 />
               ) : null}
               <p className="text-gray-700 mb-2 text-sm">{currentQRTitle}</p>
-              {qrError && (
-                <p className="text-red-600 mb-2 text-xs">{qrError}</p>
-              )}
+              {qrError && <p className="text-red-600 mb-2 text-xs">{qrError}</p>}
               <div className="flex gap-2 justify-center">
                 {qrError && (
                   <button
                     onClick={() => {
-                      const post = posts.find(p => p.id === currentPostId);
-                      if (post) openQRModal(post);
+                      const post = posts.find(p => p.id === currentPostId)
+                      if (post) openQRModal(post)
                     }}
                     className="py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm flex items-center gap-2"
                     disabled={qrLoading}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
                     </svg>
                     Reintentar
                   </button>
@@ -593,8 +772,18 @@ const Profile = () => {
                     onClick={downloadQR}
                     className="py-2 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm flex items-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                     Descargar
                   </button>
@@ -603,7 +792,13 @@ const Profile = () => {
                   onClick={closeQRModal}
                   className="py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Cerrar
@@ -614,7 +809,7 @@ const Profile = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default Profile;
+export default Profile

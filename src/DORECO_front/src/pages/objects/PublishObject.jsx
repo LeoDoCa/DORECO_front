@@ -1,341 +1,404 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react'
 
-let existingImages = []; 
-let newImages = [];     
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Formik, Form, Field, ErrorMessage } from "formik";
-import * as Yup from "yup";
-import { useApi } from "@hooks/useApi";
-import { AuthManager } from "@config/context/auth-manager";
-import { useConfirmAction } from "@hooks/useConfirmAction";
-import icon from "../../assets/icon.png";
+let existingImages = []
+let newImages = []
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Formik, Form, Field, ErrorMessage } from 'formik'
+import * as Yup from 'yup'
+import { useApi } from '@hooks/useApi'
+import { AuthManager } from '@config/context/auth-manager'
+import { useConfirmAction } from '@hooks/useConfirmAction'
+import icon from '../../assets/icon.png'
 
 const PublishObject = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const editId = searchParams.get("id");
-  const { post, put, loading, getSilence, get } = useApi();
-  const { confirmAction, showSuccess } = useConfirmAction();
-  const [imagePreview, setImagePreview] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('id')
+  const { post, put, loading, getSilence, get } = useApi()
+  const { confirmAction, showSuccess } = useConfirmAction()
+  const [imagePreview, setImagePreview] = useState([])
+  const [categories, setCategories] = useState([])
   const [initialValues, setInitialValues] = useState({
-    name: "",
-    description: "",
-    category: "",
-    otherCategory: "",
-    otherCategoryDescription: "",
-    condition: "",
-    tags: "",
+    name: '',
+    description: '',
+    category: '',
+    otherCategory: '',
+    otherCategoryDescription: '',
+    condition: '',
+    tags: '',
     images: [],
-    publication_type: "",
-    price: "",
-    loan_days: "",
-  });
-  const [isEdit, setIsEdit] = useState(false);
-  const [loadingInitial, setLoadingInitial] = useState(false);
+    publication_type: '',
+    price: '',
+    loan_days: '',
+  })
+  const [isEdit, setIsEdit] = useState(false)
+  const [loadingInitial, setLoadingInitial] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const conditions = [
-    { label: "Nuevo", value: "new" },
-    { label: "Como nuevo", value: "like_new" },
-    { label: "Bueno", value: "good" },
-    { label: "Regular", value: "fair" },
-    { label: "Malo", value: "poor" },
-  ];
+    { label: 'Nuevo', value: 'new' },
+    { label: 'Como nuevo', value: 'like_new' },
+    { label: 'Bueno', value: 'good' },
+    { label: 'Regular', value: 'fair' },
+    { label: 'Malo', value: 'poor' },
+  ]
 
   const validationSchema = Yup.object().shape({
     name: Yup.string()
-      .trim("No se permiten solo espacios en el nombre")
-      .min(3, "El nombre debe tener al menos 3 caracteres")
-      .max(100, "El nombre no puede exceder 100 caracteres")
-      .required("El nombre es requerido")
-      .test('not-empty', 'El nombre no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+      .trim('No se permiten solo espacios en el nombre')
+      .min(3, 'El nombre debe tener al menos 3 caracteres')
+      .max(100, 'El nombre no puede exceder 100 caracteres')
+      .required('El nombre es requerido')
+      .test(
+        'not-empty',
+        'El nombre no puede estar vacío o solo contener espacios',
+        value => value && value.trim() !== ''
+      ),
     description: Yup.string()
-      .trim("No se permiten solo espacios en la descripción")
-      .min(10, "La descripción debe tener al menos 10 caracteres")
-      .max(1000, "La descripción no puede exceder 1000 caracteres")
-      .required("La descripción es requerida")
-      .test('not-empty', 'La descripción no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
+      .trim('No se permiten solo espacios en la descripción')
+      .min(10, 'La descripción debe tener al menos 10 caracteres')
+      .max(1000, 'La descripción no puede exceder 1000 caracteres')
+      .required('La descripción es requerida')
+      .test(
+        'not-empty',
+        'La descripción no puede estar vacía o solo contener espacios',
+        value => value && value.trim() !== ''
+      ),
     category: Yup.string()
-      .trim("No se permiten solo espacios en la categoría")
-      .required("La categoría es requerida")
-      .test('not-empty', 'La categoría no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
-    otherCategory: Yup.string().when("category", {
-      is: (val) => val === "otros",
-      then: (schema) =>
+      .trim('No se permiten solo espacios en la categoría')
+      .required('La categoría es requerida')
+      .test(
+        'not-empty',
+        'La categoría no puede estar vacía o solo contener espacios',
+        value => value && value.trim() !== ''
+      ),
+    otherCategory: Yup.string().when('category', {
+      is: val => val === 'otros',
+      then: schema =>
         schema
-          .trim("No se permiten solo espacios en la sugerencia de categoría")
-          .min(3, "La sugerencia debe tener al menos 3 caracteres")
-          .required("Debes ingresar una sugerencia de categoría")
-          .test('not-empty', 'La sugerencia de categoría no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
-      otherwise: (schema) => schema.notRequired().nullable(),
+          .trim('No se permiten solo espacios en la sugerencia de categoría')
+          .min(3, 'La sugerencia debe tener al menos 3 caracteres')
+          .required('Debes ingresar una sugerencia de categoría')
+          .test(
+            'not-empty',
+            'La sugerencia de categoría no puede estar vacía o solo contener espacios',
+            value => value && value.trim() !== ''
+          ),
+      otherwise: schema => schema.notRequired().nullable(),
     }),
-    otherCategoryDescription: Yup.string().when("category", {
-      is: (val) => val === "otros",
-      then: (schema) =>
+    otherCategoryDescription: Yup.string().when('category', {
+      is: val => val === 'otros',
+      then: schema =>
         schema
-          .trim("No se permiten solo espacios en la descripción de la categoría")
-          .min(3, "La descripción debe tener al menos 3 caracteres")
-          .required("Debes ingresar una descripción para la categoría")
-          .test('not-empty', 'La descripción de la categoría no puede estar vacía o solo contener espacios', value => value && value.trim() !== ''),
-      otherwise: (schema) => schema.notRequired().nullable(),
+          .trim('No se permiten solo espacios en la descripción de la categoría')
+          .min(3, 'La descripción debe tener al menos 3 caracteres')
+          .required('Debes ingresar una descripción para la categoría')
+          .test(
+            'not-empty',
+            'La descripción de la categoría no puede estar vacía o solo contener espacios',
+            value => value && value.trim() !== ''
+          ),
+      otherwise: schema => schema.notRequired().nullable(),
     }),
     condition: Yup.string()
-      .trim("No se permiten solo espacios en el estado")
-      .required("El estado es requerido")
-      .test('not-empty', 'El estado no puede estar vacío o solo contener espacios', value => value && value.trim() !== ''),
+      .trim('No se permiten solo espacios en el estado')
+      .required('El estado es requerido')
+      .test(
+        'not-empty',
+        'El estado no puede estar vacío o solo contener espacios',
+        value => value && value.trim() !== ''
+      ),
     tags: Yup.string(),
-    images: Yup.array().min(1, "Debe subir al menos una imagen"),
-    publication_type: Yup.string().required(
-      "Debes seleccionar el tipo de publicación"
-    ),
-    price: Yup.number().when("publication_type", {
-      is: "Vender",
-      then: (schema) =>
+    images: Yup.array().min(1, 'Debe subir al menos una imagen'),
+    publication_type: Yup.string().required('Debes seleccionar el tipo de publicación'),
+    price: Yup.number().when('publication_type', {
+      is: 'Vender',
+      then: schema =>
         schema
-          .typeError("El precio debe ser un número válido")
-          .positive("El precio debe ser mayor a 0")
-          .required("Debes ingresar el precio"),
-      otherwise: (schema) => schema.notRequired(),
+          .typeError('El precio debe ser un número válido')
+          .positive('El precio debe ser mayor a 0')
+          .required('Debes ingresar el precio'),
+      otherwise: schema => schema.notRequired(),
     }),
-    loan_days: Yup.number().when("publication_type", {
-      is: "Prestar",
-      then: (schema) =>
+    loan_days: Yup.number().when('publication_type', {
+      is: 'Prestar',
+      then: schema =>
         schema
-          .typeError("La cantidad de días debe ser un número")
-          .integer("Debe ser un número entero")
-          .positive("Debe ser mayor a 0")
-          .required("Debes ingresar la cantidad de días"),
-      otherwise: (schema) => schema.notRequired(),
+          .typeError('La cantidad de días debe ser un número')
+          .integer('Debe ser un número entero')
+          .positive('Debe ser mayor a 0')
+          .required('Debes ingresar la cantidad de días'),
+      otherwise: schema => schema.notRequired(),
     }),
-  });
+  })
 
   useEffect(() => {
     const fetchPublication = async () => {
-      if (!editId) return;
-      setLoadingInitial(true);
-      setIsEdit(true);
+      if (!editId) return
+      setLoadingInitial(true)
+      setIsEdit(true)
       try {
-        const res = await get(`/api/publications/${editId}/`);
+        const res = await getSilence(`/api/publications/${editId}/`)
         if (res.success) {
-          const obj = res.data.publication_data || res.data;
-          const previews = [obj.image1, obj.image2, obj.image3].filter(Boolean).map(img => img.startsWith("http") ? img : `http://localhost:8000${img}`);
+          const obj = res.data.publication_data || res.data
+          const previews = [obj.image1, obj.image2, obj.image3]
+            .filter(Boolean)
+            .map(img => (img.startsWith('http') ? img : `http://localhost:8000${img}`))
           setInitialValues({
-            name: obj.title || "",
-            description: obj.description || "",
-            category: obj.category || obj.category_name || "",
-            otherCategory: "",
-            otherCategoryDescription: "",
-            condition: obj.condition || "",
-            tags: obj.keywords || "",
-            images: previews, 
+            name: obj.title || '',
+            description: obj.description || '',
+            category: obj.category || obj.category_name || '',
+            otherCategory: '',
+            otherCategoryDescription: '',
+            condition: obj.condition || '',
+            tags: obj.keywords || '',
+            images: previews,
             publication_type:
-              obj.publication_type === "donation"
-                ? "Donar"
-                : obj.publication_type === "sale"
-                ? "Vender"
-                : obj.publication_type === "loan"
-                ? "Prestar"
-                : "",
-            price: obj.price || "",
-            loan_days: obj.duration || "",
-          });
-          setImagePreview(previews);
+              obj.publication_type === 'donation'
+                ? 'Donar'
+                : obj.publication_type === 'sale'
+                  ? 'Vender'
+                  : obj.publication_type === 'loan'
+                    ? 'Prestar'
+                    : '',
+            price: obj.price || '',
+            loan_days: obj.duration || '',
+          })
+          setImagePreview(previews)
         }
       } finally {
-        setLoadingInitial(false);
+        setLoadingInitial(false)
       }
-    };
-    fetchPublication();
-    
-  }, [editId]);
+    }
+    fetchPublication()
+  }, [editId])
 
   const handleImageChange = (event, setFieldValue, currentImages) => {
-    const files = Array.from(event.target.files);
-    let images = currentImages ? [...currentImages] : [];
-    while (images.length < 3) images.push(null);
-    let fileIdx = 0;
+    const files = Array.from(event.target.files)
+    let images = currentImages ? [...currentImages] : []
+    while (images.length < 3) images.push(null)
+    let fileIdx = 0
     for (let f of files) {
-      let inserted = false;
+      let inserted = false
       for (let i = 0; i < 3; ++i) {
         if (!images[i]) {
-          images[i] = f;
-          inserted = true;
-          break;
+          images[i] = f
+          inserted = true
+          break
         }
       }
       if (!inserted && images.length < 3) {
-        images.push(f);
+        images.push(f)
       }
     }
-    images = images.slice(0, 3);
-    setFieldValue('images', images);
-    setImagePreview(images.map(img => !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))));
-  };
+    images = images.slice(0, 3)
+    setFieldValue('images', images)
+    setImagePreview(
+      images.map(img => (!img ? '' : typeof img === 'string' ? img : URL.createObjectURL(img)))
+    )
+  }
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     const confirmed = await confirmAction({
-      title: isEdit ? "¿Actualizar publicación?" : "¿Publicar objeto?",
+      title: isEdit ? '¿Actualizar publicación?' : '¿Publicar objeto?',
       text: isEdit
-        ? "Se actualizarán los datos de la publicación."
-        : "El objeto será visible para todos los usuarios una vez publicado",
-      confirmButtonText: isEdit ? "Sí, actualizar" : "Sí, publicar",
-      icon: "question",
-    });
+        ? 'Se actualizarán los datos de la publicación.'
+        : 'El objeto será visible para todos los usuarios una vez publicado',
+      confirmButtonText: isEdit ? 'Sí, actualizar' : 'Sí, publicar',
+      icon: 'question',
+    })
 
     if (!confirmed) {
-      setSubmitting(false);
-      return;
+      setSubmitting(false)
+      return
     }
 
     try {
-      let categoryId = values.category;
+      let categoryId = values.category
 
-      if (values.category === "otros") {
+      if (values.category === 'otros') {
         const categoryPayload = {
           name: values.otherCategory,
           description: values.otherCategoryDescription,
           is_active: false,
-        };
+        }
 
-        const token = AuthManager.getToken ? AuthManager.getToken() : null;
+        const token = AuthManager.getToken ? AuthManager.getToken() : null
 
-        const response = await fetch("http://localhost:8000/api/categories/", {
-          method: "POST",
+        const response = await fetch('http://localhost:8000/api/categories/', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             ...(token && { Authorization: `Bearer ${token}` }),
           },
           body: JSON.stringify(categoryPayload),
-        });
+        })
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json()
           if (errorData && errorData.name) {
-            setFieldError("otherCategory", errorData.name[0]);
+            setFieldError('otherCategory', errorData.name[0])
           }
           if (errorData && errorData.description) {
-            setFieldError("otherCategoryDescription", errorData.description[0]);
+            setFieldError('otherCategoryDescription', errorData.description[0])
           }
-          throw new Error("Error al crear la categoría sugerida");
+          throw new Error('Error al crear la categoría sugerida')
         }
 
-        const categoryData = await response.json();
-        categoryId = categoryData.id;
+        const categoryData = await response.json()
+        categoryId = categoryData.id
       }
 
-      let pubType = "donation";
-      if (values.publication_type === "Vender") pubType = "sale";
-      else if (values.publication_type === "Prestar") pubType = "loan";
+      let pubType = 'donation'
+      if (values.publication_type === 'Vender') pubType = 'sale'
+      else if (values.publication_type === 'Prestar') pubType = 'loan'
 
-      let price = values.price;
-      let loan_days = values.loan_days;
-      if (pubType === "donation") {
-        price = null;
-        loan_days = null;
-      } else if (pubType === "sale") {
-        loan_days = null;
-      } else if (pubType === "loan") {
-        price = null;
+      let price = values.price
+      let loan_days = values.loan_days
+      if (pubType === 'donation') {
+        price = null
+        loan_days = null
+      } else if (pubType === 'sale') {
+        loan_days = null
+      } else if (pubType === 'loan') {
+        price = null
       }
 
-      const formData = new FormData();
-      formData.append("title", values.name);
-      formData.append("description", values.description);
-      formData.append("category", categoryId);
-      formData.append("condition", values.condition);
-      formData.append("publication_type", pubType);
-      formData.append("keywords", values.tags || "");
-      if (pubType === "sale") {
-        formData.append("price", price);
+      const formData = new FormData()
+      formData.append('title', values.name)
+      formData.append('description', values.description)
+      formData.append('category', categoryId)
+      formData.append('condition', values.condition)
+      formData.append('publication_type', pubType)
+      formData.append('keywords', values.tags || '')
+      if (pubType === 'sale') {
+        formData.append('price', price)
       }
-      if (pubType === "loan") {
-        formData.append("duration", loan_days);
+      if (pubType === 'loan') {
+        formData.append('duration', loan_days)
       }
 
-      const allImages = [...values.images];
+      const allImages = [...values.images]
       for (let i = 0; i < 3; ++i) {
-        const img = allImages[i];
+        const img = allImages[i]
         if (img instanceof File) {
-          formData.append(`image${i + 1}`, img);
-        } else if (!img) { 
-          formData.append(`image${i + 1}`, '');
+          formData.append(`image${i + 1}`, img)
+        } else if (!img) {
+          formData.append(`image${i + 1}`, '')
         }
       }
 
-      formData.append("is_active", true);
+      formData.append('is_active', true)
 
       if (isEdit) {
         await put(`/api/publications/${editId}/`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        showSuccess("Publicación actualizada correctamente");
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        showSuccess('Publicación actualizada correctamente')
       } else {
-        await post("/api/publications/", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        showSuccess("Objeto publicado correctamente");
+        await post('/api/publications/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        showSuccess('Objeto publicado correctamente')
       }
-      navigate("/objects");
+      navigate('/objects')
 
-      newImages = [];
-      existingImages = [];
+      newImages = []
+      existingImages = []
     } catch (error) {
       if (window.Swal) {
         await window.Swal.fire({
           icon: 'error',
           title: 'No se pudo publicar/actualizar el objeto',
-          text: (error.response?.data?.detail || error.message || "Error inesperado. Intenta más tarde."),
+          text:
+            error.response?.data?.detail || error.message || 'Error inesperado. Intenta más tarde.',
           confirmButtonText: 'Cerrar',
         })
       } else {
-        alert("Error publicando/actualizando objeto: " + (error.message || ""));
+        alert('Error publicando/actualizando objeto: ' + (error.message || ''))
       }
-      console.error("Error publicando/actualizando objeto:", error);
+      console.error('Error publicando/actualizando objeto:', error)
     }
-    setSubmitting(false);
-  };
+    setSubmitting(false)
+  }
 
+  const handleDrop = (e, setFieldValue, values) => {
+    e.preventDefault()
+    setIsDragOver(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+
+    if (imageFiles.length > 0) {
+      // Simular el evento de input file para reutilizar la lógica existente
+      const fakeEvent = {
+        target: {
+          files: imageFiles,
+        },
+      }
+      handleImageChange(fakeEvent, setFieldValue, values.images)
+    }
+  }
+
+  const handleDragOver = e => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = e => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const triggerFileInput = e => {
+    e.preventDefault()
+    e.stopPropagation()
+    const fileInput = document.getElementById('images')
+    if (fileInput) {
+      fileInput.click()
+    }
+  }
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const { success, data } = await getSilence("/api/categories/active");
+      const { success, data } = await getSilence('/api/categories/active')
 
       if (success) {
-        const categoriasBase = data.map(({ id, name }) => ({ id, name }));
-        const categoriasFinal = categoriasBase.some(cat => cat.name === "Otros")
+        const categoriasBase = data.map(({ id, name }) => ({ id, name }))
+        const categoriasFinal = categoriasBase.some(cat => cat.name === 'Otros')
           ? categoriasBase
-          : [...categoriasBase, { id: "otros", name: "Otros" }];
+          : [...categoriasBase, { id: 'otros', name: 'Otros' }]
 
-        setCategories(categoriasFinal);
+        setCategories(categoriasFinal)
       } else {
-        setCategories([{ id: "otros", name: "Otros" }]);
+        setCategories([{ id: 'otros', name: 'Otros' }])
       }
-    };
+    }
 
-    fetchCategories();
-  }, []);
+    fetchCategories()
+  }, [])
 
   useEffect(() => {
     if (isEdit && initialValues.images && initialValues.images.length > 0) {
-      existingImages = initialValues.images.filter(img => typeof img === 'string');
-      newImages = initialValues.images.filter(img => typeof img === 'object');
+      existingImages = initialValues.images.filter(img => typeof img === 'string')
+      newImages = initialValues.images.filter(img => typeof img === 'object')
     }
-  }, [isEdit, initialValues.images]);
+  }, [isEdit, initialValues.images])
 
   if (loadingInitial) {
-    return <div className="p-8 text-center">Cargando publicación...</div>;
+    return <div className="p-8 text-center">Cargando publicación...</div>
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#28344F]">
-          {isEdit ? "Editar Publicación" : "Nueva Publicación"}
+          {isEdit ? 'Editar Publicación' : 'Nueva Publicación'}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           {isEdit
-            ? "Modifica los datos de tu publicación."
-            : "Comparte un objeto que ya no uses para que otros puedan aprovecharlo"}
+            ? 'Modifica los datos de tu publicación.'
+            : 'Comparte un objeto que ya no uses para que otros puedan aprovecharlo'}
         </p>
       </div>
 
@@ -354,34 +417,24 @@ const PublishObject = () => {
                 <div className="space-y-6">
                   <div className="flex items-center space-x-3">
                     <img src={icon} alt="Icono" className="w-10 h-10" />
-                    <h3 className="text-lg font-semibold text-[#394867]">
-                      Información Básica
-                    </h3>
+                    <h3 className="text-lg font-semibold text-[#394867]">Información Básica</h3>
                   </div>
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                     Nombre del Objeto *
                   </label>
                   <Field
                     id="name"
                     name="name"
                     type="text"
-                    className={`input-field ${errors.name && touched.name
-                      ? "border-red-500 focus:ring-red-500"
-                      : ""
-                      }`}
+                    className={`input-field ${
+                      errors.name && touched.name ? 'border-red-500 focus:ring-red-500' : ''
+                    }`}
                     placeholder="Ej: Calculadora científica Casio"
                   />
-                  <ErrorMessage
-                    name="name"
-                    component="div"
-                    className="form-error"
-                  />
+                  <ErrorMessage name="name" component="div" className="form-error" />
                 </div>
 
                 <div>
@@ -396,17 +449,14 @@ const PublishObject = () => {
                     id="description"
                     name="description"
                     rows={4}
-                    className={`input-field ${errors.description && touched.description
-                      ? "border-red-500 focus:ring-red-500"
-                      : ""
-                      }`}
+                    className={`input-field ${
+                      errors.description && touched.description
+                        ? 'border-red-500 focus:ring-red-500'
+                        : ''
+                    }`}
                     placeholder="Describe el objeto que deseas publicar..."
                   />
-                  <ErrorMessage
-                    name="description"
-                    component="div"
-                    className="form-error"
-                  />
+                  <ErrorMessage name="description" component="div" className="form-error" />
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -421,21 +471,24 @@ const PublishObject = () => {
                       as="select"
                       id="category"
                       name="category"
-                      className={`input-field ${errors.category && touched.category ? "border-red-500 focus:ring-red-500" : ""
-                        }`}
-                      onChange={(e) => {
-                        const selected = e.target.value;
-                        setFieldValue("category", selected);
-                        if (selected !== "otros") {
-                          setFieldValue("otherCategory", "");
-                          setFieldValue("otherCategoryDescription", "");
+                      className={`input-field ${
+                        errors.category && touched.category
+                          ? 'border-red-500 focus:ring-red-500'
+                          : ''
+                      }`}
+                      onChange={e => {
+                        const selected = e.target.value
+                        setFieldValue('category', selected)
+                        if (selected !== 'otros') {
+                          setFieldValue('otherCategory', '')
+                          setFieldValue('otherCategoryDescription', '')
                         }
                       }}
                     >
                       <option value="">Selecciona una categoría</option>
                       {categories
-                        .filter((category) => category.name !== "Otros")
-                        .map((category) => (
+                        .filter(category => category.name !== 'Otros')
+                        .map(category => (
                           <option key={category.id} value={category.id}>
                             {category.name}
                           </option>
@@ -443,7 +496,7 @@ const PublishObject = () => {
                       <option value="otros">Otros</option>
                     </Field>
 
-                    {values.category === "otros" && (
+                    {values.category === 'otros' && (
                       <div className="mt-4 space-y-4">
                         <div>
                           <label
@@ -457,10 +510,11 @@ const PublishObject = () => {
                             name="otherCategory"
                             type="text"
                             placeholder="Ej. Arte digital, Antigüedades, etc."
-                            className={`input-field ${errors.otherCategory && touched.otherCategory
-                              ? "border-red-500 focus:ring-red-500"
-                              : ""
-                              }`}
+                            className={`input-field ${
+                              errors.otherCategory && touched.otherCategory
+                                ? 'border-red-500 focus:ring-red-500'
+                                : ''
+                            }`}
                           />
                           <ErrorMessage
                             name="otherCategory"
@@ -480,10 +534,11 @@ const PublishObject = () => {
                             name="otherCategoryDescription"
                             type="text"
                             placeholder="Describe brevemente la categoría sugerida"
-                            className={`input-field ${errors.otherCategoryDescription && touched.otherCategoryDescription
-                              ? "border-red-500 focus:ring-red-500"
-                              : ""
-                              }`}
+                            className={`input-field ${
+                              errors.otherCategoryDescription && touched.otherCategoryDescription
+                                ? 'border-red-500 focus:ring-red-500'
+                                : ''
+                            }`}
                           />
                           <ErrorMessage
                             name="otherCategoryDescription"
@@ -494,11 +549,7 @@ const PublishObject = () => {
                       </div>
                     )}
 
-                    <ErrorMessage
-                      name="category"
-                      component="div"
-                      className="form-error"
-                    />
+                    <ErrorMessage name="category" component="div" className="form-error" />
                   </div>
 
                   <div>
@@ -512,31 +563,25 @@ const PublishObject = () => {
                       as="select"
                       id="condition"
                       name="condition"
-                      className={`input-field ${errors.condition && touched.condition
-                        ? "border-red-500 focus:ring-red-500"
-                        : ""
-                        }`}
+                      className={`input-field ${
+                        errors.condition && touched.condition
+                          ? 'border-red-500 focus:ring-red-500'
+                          : ''
+                      }`}
                     >
                       <option value="">Selecciona el estado</option>
-                      {conditions.map((condition) => (
+                      {conditions.map(condition => (
                         <option key={condition.value} value={condition.value}>
                           {condition.label}
                         </option>
                       ))}
                     </Field>
-                    <ErrorMessage
-                      name="condition"
-                      component="div"
-                      className="form-error"
-                    />
+                    <ErrorMessage name="condition" component="div" className="form-error" />
                   </div>
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="tags"
-                    className="block text-sm font-semibold text-[#394867] mb-2"
-                  >
+                  <label htmlFor="tags" className="block text-sm font-semibold text-[#394867] mb-2">
                     Etiquetas
                   </label>
                   <Field
@@ -547,8 +592,8 @@ const PublishObject = () => {
                     placeholder="Separadas por comas: calculadora, científica, casio, estudiantes"
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Agrega palabras clave separadas por comas para ayudar a
-                    otros usuarios a encontrar tu objeto
+                    Agrega palabras clave separadas por comas para ayudar a otros usuarios a
+                    encontrar tu objeto
                   </p>
                 </div>
               </div>
@@ -561,10 +606,10 @@ const PublishObject = () => {
                 <div className="flex flex-wrap gap-4 mt-2">
                   {[
                     {
-                      label: "Donar",
-                      value: "Donar",
-                      color: "green-500",
-                      ring: "green-500",
+                      label: 'Donar',
+                      value: 'Donar',
+                      color: 'green-500',
+                      ring: 'green-500',
                       svg: (
                         <svg
                           className="mx-auto h-12 w-12 text-green-500"
@@ -585,10 +630,10 @@ const PublishObject = () => {
                       ),
                     },
                     {
-                      label: "Prestar",
-                      value: "Prestar",
-                      color: "blue-800",
-                      ring: "blue-800",
+                      label: 'Prestar',
+                      value: 'Prestar',
+                      color: 'blue-800',
+                      ring: 'blue-800',
                       svg: (
                         <svg
                           className="mx-auto h-12 w-12 text-blue-800"
@@ -607,10 +652,10 @@ const PublishObject = () => {
                       ),
                     },
                     {
-                      label: "Vender",
-                      value: "Vender",
-                      color: "yellow-600",
-                      ring: "yellow-600",
+                      label: 'Vender',
+                      value: 'Vender',
+                      color: 'yellow-600',
+                      ring: 'yellow-600',
                       svg: (
                         <svg
                           className="mx-auto h-12 w-12 text-yellow-600"
@@ -631,34 +676,26 @@ const PublishObject = () => {
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setFieldValue("publication_type", value)}
+                      onClick={() => setFieldValue('publication_type', value)}
                       className={`flex-1 min-w-[200px] p-4 border rounded transition-all duration-150 
                         focus:outline-none focus:ring-2 focus:ring-${ring} focus:border-${color}
-                        ${values.publication_type === value
-                          ? `border-${color} ring-2 ring-${ring} bg-${color}/10`
-                          : "border-gray-300 hover:bg-gray-100"
+                        ${
+                          values.publication_type === value
+                            ? `border-${color} ring-2 ring-${ring} bg-${color}/10`
+                            : 'border-gray-300 hover:bg-gray-100'
                         }`}
                     >
                       {svg}
-                      <p className={`text-center mt-2 text-${color}`}>
-                        {label}
-                      </p>
+                      <p className={`text-center mt-2 text-${color}`}>{label}</p>
                     </button>
                   ))}
                 </div>
 
-                <ErrorMessage
-                  name="publication_type"
-                  component="div"
-                  className="form-error mt-2"
-                />
+                <ErrorMessage name="publication_type" component="div" className="form-error mt-2" />
 
-                {values.publication_type === "Vender" && (
+                {values.publication_type === 'Vender' && (
                   <div className="mt-4">
-                    <label
-                      htmlFor="price"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
+                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
                       Precio (MXN) *
                     </label>
                     <Field
@@ -666,20 +703,15 @@ const PublishObject = () => {
                       name="price"
                       type="number"
                       placeholder="Ej. 500"
-                      className={`input-field ${errors.price && touched.price
-                        ? "border-red-500 focus:ring-red-500"
-                        : ""
-                        }`}
+                      className={`input-field ${
+                        errors.price && touched.price ? 'border-red-500 focus:ring-red-500' : ''
+                      }`}
                     />
-                    <ErrorMessage
-                      name="price"
-                      component="div"
-                      className="form-error"
-                    />
+                    <ErrorMessage name="price" component="div" className="form-error" />
                   </div>
                 )}
 
-                {values.publication_type === "Prestar" && (
+                {values.publication_type === 'Prestar' && (
                   <div className="mt-4">
                     <label
                       htmlFor="loan_days"
@@ -692,16 +724,13 @@ const PublishObject = () => {
                       name="loan_days"
                       type="number"
                       placeholder="Ej. 7"
-                      className={`input-field ${errors.loan_days && touched.loan_days
-                        ? "border-red-500 focus:ring-red-500"
-                        : ""
-                        }`}
+                      className={`input-field ${
+                        errors.loan_days && touched.loan_days
+                          ? 'border-red-500 focus:ring-red-500'
+                          : ''
+                      }`}
                     />
-                    <ErrorMessage
-                      name="loan_days"
-                      component="div"
-                      className="form-error"
-                    />
+                    <ErrorMessage name="loan_days" component="div" className="form-error" />
                   </div>
                 )}
               </div>
@@ -716,118 +745,211 @@ const PublishObject = () => {
                     Subir Imágenes (máximo 3)
                   </label>
 
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                    {[0,1,2].map(index => (
+                  {/* Grid de imágenes existentes */}
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mb-4">
+                    {[0, 1, 2].map(index => (
                       <div key={index} className="relative">
-                        {values.images[index] && (typeof values.images[index] === 'string' || values.images[index] instanceof File) ? (
+                        {values.images[index] &&
+                        (typeof values.images[index] === 'string' ||
+                          values.images[index] instanceof File) ? (
                           <>
                             <img
-                              src={typeof values.images[index] === 'string' ? values.images[index] : URL.createObjectURL(values.images[index])}
+                              src={
+                                typeof values.images[index] === 'string'
+                                  ? values.images[index]
+                                  : URL.createObjectURL(values.images[index])
+                              }
                               alt={`Preview ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg"
+                              className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
                             />
                             <button
                               type="button"
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                               onClick={() => {
-                                let imgs = [...values.images];
-                                imgs[index] = null;
-                                setFieldValue("images", imgs);
-                                setImagePreview(imgs.map(img =>
-                                  !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))
-                                ));
+                                let imgs = [...values.images]
+                                imgs[index] = null
+                                // Reorganizar las imágenes para eliminar huecos
+                                const filteredImages = imgs.filter(img => img !== null)
+                                // Completar con null hasta llegar a 3 elementos
+                                while (filteredImages.length < 3) {
+                                  filteredImages.push(null)
+                                }
+                                setFieldValue('images', filteredImages)
+                                setImagePreview(
+                                  filteredImages.map(img =>
+                                    !img
+                                      ? ''
+                                      : typeof img === 'string'
+                                        ? img
+                                        : URL.createObjectURL(img)
+                                  )
+                                )
                               }}
                             >
                               ×
                             </button>
                           </>
-                        ) : null}
+                        ) : (
+                          // Mostrar slot vacío SOLO en modo edición Y si hay menos de 3 imágenes
+                          isEdit &&
+                          values.images.filter(img => img).length < 3 && (
+                            <div className="relative">
+                              <input
+                                type="file"
+                                id={`slot-file-${index}`}
+                                className="sr-only"
+                                accept="image/*"
+                                onChange={e => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    let imgs = [...values.images]
+                                    // Encontrar el primer slot vacío en lugar de usar el índice fijo
+                                    const firstEmptyIndex = imgs.findIndex(img => !img)
+                                    if (firstEmptyIndex !== -1) {
+                                      imgs[firstEmptyIndex] = e.target.files[0]
+                                    } else if (imgs.length < 3) {
+                                      imgs.push(e.target.files[0])
+                                    }
+                                    setFieldValue('images', imgs)
+                                    setImagePreview(
+                                      imgs.map(img =>
+                                        !img
+                                          ? ''
+                                          : typeof img === 'string'
+                                            ? img
+                                            : URL.createObjectURL(img)
+                                      )
+                                    )
+                                  }
+                                }}
+                                disabled={values.images.filter(v => v).length >= 3}
+                              />
+                              <label
+                                htmlFor={`slot-file-${index}`}
+                                className="w-full h-24 flex items-center justify-center border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500"
+                              >
+                                <div className="text-center">
+                                  <span className="text-gray-400 text-2xl mb-1 block">+</span>
+                                  <span className="text-xs text-gray-500">Agregar</span>
+                                </div>
+                              </label>
+                            </div>
+                          )
+                        )}
                       </div>
                     ))}
                   </div>
-                  {/* Input grande solo para crear (no editar): */}
-                  {!isEdit && (
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
-                    <div className="space-y-1 text-center">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
+
+                  {/* Zona de subida mejorada - SOLO para creación nueva (publicación), NO para edición */}
+                  {!isEdit && values.images.filter(img => img).length < 3 && (
+                    <>
+                      {/* Input file oculto - ÚNICO */}
+                      <input
+                        id="images"
+                        name="images"
+                        type="file"
+                        className="sr-only"
+                        multiple
+                        accept="image/*"
+                        onChange={e => handleImageChange(e, setFieldValue, values.images)}
+                        disabled={values.images.filter(v => v).length >= 3}
+                      />
+
+                      <div
+                        className={`relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer
+            ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+            ${values.images.filter(img => img).length >= 3 ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+                        onDrop={e => handleDrop(e, setFieldValue, values)}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onClick={triggerFileInput}
                       >
+                        <div className="flex justify-center px-6 pt-5 pb-6">
+                          <div className="space-y-2 text-center">
+                            {/* Icono que cambia según el estado */}
+                            {isDragOver ? (
+                              <svg
+                                className="mx-auto h-12 w-12 text-blue-400 animate-bounce"
+                                stroke="currentColor"
+                                fill="none"
+                                viewBox="0 0 48 48"
+                              >
+                                <path
+                                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                  strokeWidth={2}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                className="mx-auto h-12 w-12 text-gray-400"
+                                stroke="currentColor"
+                                fill="none"
+                                viewBox="0 0 48 48"
+                              >
+                                <path
+                                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                  strokeWidth={2}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+
+                            {/* Texto que cambia según el estado */}
+                            <div className="text-sm text-gray-600">
+                              {isDragOver ? (
+                                <p className="text-blue-600 font-medium">
+                                  ¡Suelta las imágenes aquí!
+                                </p>
+                              ) : (
+                                <>
+                                  <p className="font-medium text-primary-600">
+                                    Haz clic para subir archivos
+                                  </p>
+                                  <p className="mt-1">o arrastra y suelta las imágenes</p>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Información adicional */}
+                            <p className="text-xs text-gray-500">
+                              PNG, JPG, GIF hasta 10MB cada una
+                            </p>
+
+                            {/* Contador de imágenes */}
+                            <p className="text-xs text-gray-400">
+                              {values.images.filter(img => img).length} de 3 imágenes
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Mensaje cuando se alcanza el máximo */}
+                  {values.images.filter(img => img).length >= 3 && (
+                    <p className="text-sm text-amber-600 mt-2 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
                         />
                       </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label
-                          htmlFor="images"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
-                        >
-                          <span>Subir archivos</span>
-                          <input
-                            id="images"
-                            name="images"
-                            type="file"
-                            className="sr-only"
-                            multiple
-                            accept="image/*"
-                            onChange={(e) =>
-                              handleImageChange(e, setFieldValue, values.images)
-                            }
-                            disabled={values.images.filter(v=>v).length >= 3}
-                          />
-                        </label>
-                        <p className="pl-1">o arrastra y suelta</p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF hasta 10MB cada una
-                      </p>
-                    </div>
-                  </div>)}
-                  {/* Input oculto individual en edición para agregar nueva imagen (slot vacío) */}
-                  {isEdit && (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mt-2">
-                      {[0,1,2].map(index => (
-                        (!values.images[index]) ? (
-                          <label key={`edit-add-${index}`} className="w-full h-24 flex items-center justify-center border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-gray-400 mt-2">
-                            <span className="text-gray-400 text-4xl">+</span>
-                            <input
-                              type="file"
-                              className="sr-only"
-                              accept="image/*"
-                              multiple={false}
-                              onChange={e => {
-                                if(e.target.files && e.target.files[0]) {
-                                  let imgs = [...values.images];
-                                  imgs[index] = e.target.files[0];
-                                  setFieldValue("images", imgs);
-                                  setImagePreview(imgs.map(img =>
-                                    !img ? "" : (typeof img === 'string' ? img : URL.createObjectURL(img))
-                                  ));
-                                }
-                              }}
-                              disabled={values.images.filter(v => v).length >= 3}
-                            />
-                          </label>
-                        ) : null
-                      ))}
-                    </div>
+                      Has alcanzado el máximo de 3 imágenes
+                    </p>
                   )}
-                  <ErrorMessage
-                    name="images"
-                    component="div"
-                    className="form-error"
-                  />
+
+                  <ErrorMessage name="images" component="div" className="form-error" />
                 </div>
               </div>
+
               <div className="flex flex-col-reverse sm:flex-row justify-center sm:space-x-3 space-y-3 space-y-reverse sm:space-y-0 pt-6 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => navigate("/objects")}
+                  onClick={() => navigate('/objects')}
                   className="btn-secondary w-full sm:w-58"
                   disabled={isSubmitting}
                 >
@@ -860,10 +982,12 @@ const PublishObject = () => {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      {isEdit ? "Actualizando..." : "Publicando..."}
+                      {isEdit ? 'Actualizando...' : 'Publicando...'}
                     </>
+                  ) : isEdit ? (
+                    'Actualizar Publicación'
                   ) : (
-                    isEdit ? "Actualizar Publicación" : "Publicar Objeto"
+                    'Publicar Objeto'
                   )}
                 </button>
               </div>
@@ -872,7 +996,7 @@ const PublishObject = () => {
         </Formik>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PublishObject;
+export default PublishObject
