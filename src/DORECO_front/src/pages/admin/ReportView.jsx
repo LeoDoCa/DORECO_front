@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
 import Skeleton from "react-loading-skeleton"
 import { useApi } from "@hooks/useApi"
+import { useConfirmAction } from "@hooks/useConfirmAction"
 
 const CONDITION_MAP = {
   new: "Nuevo",
@@ -28,6 +29,7 @@ const ReportView = () => {
   const [publication, setPublication] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  const { confirmAction } = useConfirmAction();
   const navState = location.state || {}
 
   useEffect(() => {
@@ -203,7 +205,16 @@ const ReportView = () => {
                 type="button"
                 className="btn-secondary bg-white"
                 disabled={actionLoading}
-                onClick={() => handleResolve("dismissed")}
+                onClick={async () => {
+                  const confirmed = await confirmAction({
+                    title: '¿Rechazar reporte?',
+                    text: 'Esta acción marcará el reporte como rechazado. ¿Deseas continuar?',
+                    confirmButtonText: 'Sí, rechazar',
+                  });
+                  if (confirmed) {
+                    handleResolve("dismissed")
+                  }
+                }}
               >
                 Rechazar Reporte
               </button>
@@ -211,7 +222,16 @@ const ReportView = () => {
                 type="button"
                 className="btn-primary"
                 disabled={actionLoading}
-                onClick={() => handleResolve("resolved")}
+                onClick={async () => {
+                  const confirmed = await confirmAction({
+                    title: '¿Aprobar reporte?',
+                    text: 'Esto desactivará la publicación y aprobará el reporte. ¿Deseas continuar?',
+                    confirmButtonText: 'Sí, aprobar',
+                  });
+                  if (confirmed) {
+                    handleResolve("resolved")
+                  }
+                }}
               >
                 Aprobar Reporte
               </button>

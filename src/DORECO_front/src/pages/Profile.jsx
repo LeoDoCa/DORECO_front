@@ -195,7 +195,6 @@ const Profile = () => {
     actions.setSubmitting(false)
   }
 
-  // ... resto de publicaciones y QR code queda igual
   const [posts, setPosts] = useState([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postsError, setPostsError] = useState('')
@@ -232,7 +231,6 @@ const Profile = () => {
     setPostsLoading(false)
   }
 
-  // QR code modal se mantiene igual ...
   const [showQRModal, setShowQRModal] = useState(false)
   const [currentQRTitle, setCurrentQRTitle] = useState('')
   const [currentPostId, setCurrentPostId] = useState(null)
@@ -304,6 +302,18 @@ const Profile = () => {
     setQrImageUrl('')
     setQrError('')
     setQrLoading(false)
+  }
+
+  const { patch } = useApi();
+
+  const handleDeliver = async (postId) => {
+    const res = await patch(`/api/publications/${postId}/change-status/`, { status: "completed" });
+    if (res.success) {
+      // Refrescar publicaciones para mostrar el nuevo estado
+      fetchMyPublications();
+    } else {
+      alert("No se pudo cambiar el estado de la publicación");
+    }
   }
 
   if (loading) return <div className="p-8">Cargando...</div>

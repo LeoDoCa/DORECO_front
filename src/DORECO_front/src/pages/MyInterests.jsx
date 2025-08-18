@@ -22,27 +22,29 @@ const MyInterests = () => {
     setLoading(true);
     const response = await getSilence("/api/favorites/");
     if (response && response.success) {
-      const mapped = response.data.map(fav => ({
-        id: fav.publication,
-        name: fav.publication_title,
-        description: fav.publication_data.description || "No hay descripción disponible",
-        category: fav.publication_data.category_name, 
-        status :
-        fav.publication_type === "donation"
-          ? "Donar"
-          : fav.publication_type === "sale"
-            ? "Vender"
-            : fav.publication_type === "loan"
-              ? "Prestar"
-              : "Desconocido",
-        image: fav.publication_data.image1 || "/placeholder.svg",
-        createdAt: fav.created_at,
-        owner: {
-          name: fav.owner_name,
-          avatar: "/placeholder.svg"
-        },
-        is_favorite: true,
-      }));
+      const mapped = response.data
+        .filter(fav => fav.publication_data.is_active !== false)
+        .map(fav => ({
+          id: fav.publication,
+          name: fav.publication_title,
+          description: fav.publication_data.description || "No hay descripción disponible",
+          category: fav.publication_data.category_name, 
+          status :
+          fav.publication_type === "donation"
+            ? "Donar"
+            : fav.publication_type === "sale"
+              ? "Vender"
+              : fav.publication_type === "loan"
+                ? "Prestar"
+                : "Desconocido",
+          image: fav.publication_data.image1 || "/placeholder.svg",
+          createdAt: fav.created_at,
+          owner: {
+            name: fav.owner_name,
+            avatar: "/placeholder.svg"
+          },
+          is_favorite: true,
+        }));
       setObjects(mapped);
     } else {
       setObjects([]);
