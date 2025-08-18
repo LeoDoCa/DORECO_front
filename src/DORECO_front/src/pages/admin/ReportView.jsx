@@ -18,6 +18,13 @@ const STATUS_MAP = {
   resolved: "Aprobado",
   dismissed: "Rechazado",
 }
+const REASON_MAP = {
+  inappropriate: "Contenido inapropiado",
+  spam: "Spam", 
+  fake: "Información falsa",
+  duplicate: "Duplicado",
+  other: "Otro",
+}
 
 const ReportView = () => {
   const { id } = useParams()
@@ -186,7 +193,7 @@ const ReportView = () => {
             </div>
             <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
               <dl className="divide-y divide-gray-200">
-                <InfoField label="Razón del Reporte" value={report.reason} />
+                <InfoField label="Razón del Reporte" value={REASON_MAP[report.reason] || report.reason || "-"} />
                 <InfoField label="Descripción del Reporte" value={report.description || "-"} />
                 <InfoField label="Descripción del Objeto" value={publication?.description || "-"} />
                 <InfoField label="Categoría" value={publication?.category_name || "-"} />
